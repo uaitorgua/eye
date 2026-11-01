@@ -1,0 +1,83 @@
+/* Токени, каркас, тулбар, панелі, dwell-зворотний зв'язок. Високий контраст, великі цілі. */
+:root {
+  --bg: #10131a; --panel: #181c25; --panel-2: #222836; --border: #343c4f;
+  --text: #f1f3f8; --dim: #a3acbf; --accent: #5aa9ff; --ok: #4cd08a; --bad: #ff6b6b; --warn: #ffc257;
+  --c-output: #b98cff; --c-input: #ff9f5a; --c-assign: #5aa9ff; --c-if: #ffc257; --c-while: #4cd08a; --c-for: #3fd0d0;
+  --radius: 16px; --gap: 12px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+  font: 20px/1.3 'Segoe UI', system-ui, sans-serif; overflow: hidden; user-select: none; }
+body { display: flex; flex-direction: column; }
+[hidden] { display: none !important; }
+
+/* ---- плитка (усі кнопки) ---- */
+.tile { position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; min-height: 96px; min-width: 110px; padding: 10px; border-radius: var(--radius);
+  background: var(--panel-2); color: var(--text); border: 3px solid var(--border);
+  font: inherit; font-size: 24px; font-weight: 600; cursor: pointer; }
+.tile-icon { font-size: 30px; line-height: 1; }
+.tile-sub { font-size: 15px; font-weight: 400; color: var(--dim); }
+.tile.ok { border-color: var(--ok); }
+.tile.cancel { border-color: #555; color: var(--dim); }
+.tile.danger { border-color: var(--bad); }
+.tile.active { border-color: var(--accent); background: #1d3350; }
+
+/* dwell: смужка прогресу знизу + підсвічування */
+[data-dwell] { position: relative; }
+[data-dwell]::after { content: ''; position: absolute; left: 0; bottom: 0; height: 8px; pointer-events: none;
+  width: calc(var(--dwell, 0) * 100%); background: var(--ok); }
+.dwell-focus { outline: 4px solid var(--accent); outline-offset: 2px; }
+.dwell-fired { animation: fired .3s; }
+@keyframes fired { from { background: var(--ok); } }
+body.paused [data-dwell]:not([data-dwell-always]) { opacity: .35; }
+body.paused #btn-pause { border-color: var(--warn); background: #4a3a14; }
+
+#gaze-dot { position: fixed; left: 0; top: 0; width: 0; height: 0; pointer-events: none; z-index: 10001; }
+#gaze-dot::before { content: ''; position: absolute; width: 26px; height: 26px; left: -13px; top: -13px; border-radius: 50%;
+  background: rgba(90,169,255,.35); border: 2px solid var(--accent); }
+#gaze-dot .ring { position: absolute; width: 56px; height: 56px; left: -28px; top: -28px; border-radius: 50%;
+  background: conic-gradient(var(--ok) calc(var(--p, 0) * 360deg), transparent 0);
+  -webkit-mask: radial-gradient(circle, transparent 20px, #000 21px); mask: radial-gradient(circle, transparent 20px, #000 21px); }
+
+/* ---- тулбар ---- */
+#toolbar { display: flex; gap: var(--gap); padding: var(--gap); background: var(--panel); border-bottom: 2px solid var(--border); flex-shrink: 0; }
+#toolbar .tool { min-width: 140px; }
+#toolbar .run { border-color: var(--ok); }
+#toolbar .stop { border-color: var(--bad); }
+body:not(.running) #btn-stop { opacity: .45; }
+.spacer { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; }
+#cam-status { font-size: 16px; color: var(--dim); max-width: 420px; }
+#cam-status.ok { color: var(--ok); }
+#cam-status.error { color: var(--bad); font-weight: 600; }
+
+/* ---- основна частина ---- */
+#main { flex: 1; display: flex; min-height: 0; }
+#chart-panel { flex: 1; display: flex; min-width: 0; }
+#chart-wrap { flex: 1; overflow: auto; padding: 24px 24px 200px;
+  background: radial-gradient(circle at 1px 1px, #262c3a 1px, transparent 0) 0 0/28px 28px; }
+#chart-wrap::-webkit-scrollbar { width: 14px; height: 14px; }
+#chart-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 7px; }
+#scroller { display: grid; grid-template-rows: 1fr auto auto 1fr; gap: var(--gap); padding: var(--gap); width: 130px; background: var(--panel); }
+#scroller .tile { font-size: 34px; min-width: 0; }
+
+#side { width: 380px; display: flex; flex-direction: column; padding: var(--gap); background: var(--panel); border-left: 2px solid var(--border); gap: 8px; }
+#side h3 { margin: 4px 0; font-size: 18px; color: var(--dim); }
+#console-out { flex: 2; overflow-y: auto; background: #0a0c10; border-radius: 12px; padding: 12px; font: 24px/1.35 Consolas, monospace; }
+#console-out .line.sys { color: var(--dim); font-size: 17px; }
+#console-out .line.error { color: var(--bad); font-size: 19px; }
+#console-out .line.input { color: var(--c-input); }
+#vars { flex: 1; overflow-y: auto; }
+.var-row { display: flex; justify-content: space-between; padding: 8px 12px; margin-bottom: 6px; border-radius: 10px; background: var(--panel-2); font-size: 22px; }
+.var-row span { font-family: Consolas, monospace; color: var(--ok); }
+.muted { color: var(--dim); }
+
+#toast { position: fixed; top: 130px; left: 50%; transform: translateX(-50%); z-index: 10002; max-width: 80vw;
+  background: var(--panel-2); border: 2px solid var(--accent); border-radius: 12px; padding: 14px 24px; font-size: 22px; }
+
+/* відео WebGazer: маленьке в кутку; при калібруванні — по центру */
+#webgazerVideoContainer { position: fixed !important; left: auto !important; top: auto !important; right: 150px !important; bottom: 12px !important;
+  transform: scale(.5); transform-origin: bottom right; z-index: 900 !important; border-radius: 12px; overflow: hidden; opacity: .85; }
+body.calibrating #webgazerVideoContainer { right: 50% !important; bottom: 50% !important; transform: translate(50%, 50%) scale(1.3); z-index: 10005 !important; opacity: 1; }
+
+.file-warning { margin: auto; text-align: center; padding: 40px; }

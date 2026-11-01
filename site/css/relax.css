@@ -1,0 +1,69 @@
+/* Тренажер розслаблення очей. Самодостатні стилі (не залежать від змінних інших файлів). */
+#relax-section {
+  position: fixed; inset: 0; z-index: 4000;
+  display: flex; flex-direction: column;
+  background:
+    radial-gradient(1200px 700px at 50% 30%, #14264a 0%, #0b1526 60%, #070d18 100%);
+  color: #eaf2ff;
+  transition: background .8s ease;
+}
+#relax-section.hidden { display: none; }
+#relax-section.dark { background: #05070c; }
+
+.relax-top {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+  padding: 20px 28px 8px;
+}
+#relax-title { font-size: clamp(1.4rem, 3.4vw, 2.4rem); font-weight: 800; letter-spacing: -.01em; }
+#relax-progress { color: #8fa6c8; font-weight: 700; font-size: 1rem; white-space: nowrap; }
+
+.relax-stage { position: relative; flex: 1; margin: 4px 24px; min-height: 0; }
+
+/* Кружечок, за яким стежить погляд */
+#relax-dot {
+  position: absolute; left: 50%; top: 50%; width: 64px; height: 64px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 32%, #b9fff4, #3fd0d0 55%, #1a9c9c 100%);
+  box-shadow: 0 0 26px 10px rgba(63, 208, 208, .55), 0 0 70px 24px rgba(63, 208, 208, .22);
+  transform: translate(-50%, -50%); will-change: left, top, transform;
+}
+#relax-section.dark #relax-dot { display: none !important; }
+
+/* Таймер-кільце в центрі знизу сцени */
+.relax-timer-wrap { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); display: grid; place-items: center; }
+#relax-ring {
+  --p: 0; width: 66px; height: 66px; border-radius: 50%;
+  background: conic-gradient(#3fd0d0 calc(var(--p) * 360deg), rgba(255,255,255,.10) 0);
+  display: grid; place-items: center; padding: 6px;
+}
+#relax-ring::after { content: ''; position: absolute; width: 54px; height: 54px; border-radius: 50%; background: #0b1526; }
+#relax-timer { position: relative; font-size: 1.5rem; font-weight: 800; color: #eaf2ff; z-index: 1; }
+
+#relax-hint {
+  text-align: center; font-size: clamp(1.05rem, 2.4vw, 1.5rem); line-height: 1.5;
+  color: #cfe0f7; max-width: 900px; margin: 6px auto 2px; padding: 0 24px; min-height: 3.2em;
+}
+#relax-section.dark #relax-hint { color: #6f86ac; }
+.relax-note { text-align: center; color: #6f86ac; font-size: .82rem; padding: 0 24px 6px; }
+
+/* Панель великих кнопок (dwell) */
+.relax-bar { display: flex; gap: 14px; justify-content: center; padding: 10px 24px 24px; }
+.relax-bar .tile {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  min-width: 128px; padding: 16px 20px; border-radius: 18px; cursor: pointer;
+  background: #16233c; border: 2px solid #26385b; color: #eaf2ff; font: inherit;
+  position: relative; overflow: hidden;
+}
+.relax-bar .tile .tile-icon { font-size: 1.6rem; }
+.relax-bar .tile .tile-label { font-weight: 700; font-size: 1rem; }
+.relax-bar .tile.active { border-color: #3fd0d0; }
+/* прогрес dwell (спільна змінна --dwell від gaze/dwell.js) */
+.relax-bar .tile::before {
+  content: ''; position: absolute; left: 0; bottom: 0; height: 4px; width: 100%;
+  transform: scaleX(var(--dwell, 0)); transform-origin: left; background: #3fd0d0;
+}
+.relax-bar .tile.dwell-focus { border-color: #3fd0d0; }
+
+@media (max-width: 620px) {
+  .relax-bar .tile { min-width: 0; flex: 1; padding: 14px 8px; }
+  .relax-bar .tile .tile-label { font-size: .85rem; }
+}

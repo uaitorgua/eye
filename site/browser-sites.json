@@ -1,0 +1,10 @@
+{
+  "_comment": "Сайти, дозволені в Браузері. Дозволяються сам домен і його піддомени. Помічник редагує цей файл на сервері.",
+  "sites": [
+    { "title": "Вікіпедія", "icon": "📚", "url": "https://uk.m.wikipedia.org/wiki/Головна_сторінка" },
+    { "title": "Укрінформ — новини", "icon": "📰", "url": "https://www.ukrinform.ua/" },
+    { "title": "Освіта.ua", "icon": "🎓", "url": "https://osvita.ua/" },
+    { "title": "UAIT", "icon": "👁", "url": "https://uait.org.ua/" }
+  ],
+  "extraHosts": ["wikipedia.org"]
+}

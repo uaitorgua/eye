@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Читанка PDF — керування очима</title>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/modals.css">
+<link rel="stylesheet" href="css/reader.css">
+<script src="lib/webgazer.js"></script>
+</head>
+<body>
+<!-- Окрема сторінка читанки. Та сама розмітка секції є в index.html — змінювати обидві. -->
+<!-- Читанка PDF: повноекранний шар. Логіка — js/reader/reader.js -->
+<section id="reader-section" data-layer>
+  <div class="rd-top"><span id="rd-title">Книги</span><span id="rd-page"></span></div>
+  <div class="rd-main">
+    <div id="reader-view"><div id="reader-pages"></div></div>
+    <div class="rd-hint" id="rd-hint-top"></div><div class="rd-hint" id="rd-hint-bottom"></div>
+    <div class="rd-hint" id="rd-hint-left"></div><div class="rd-hint" id="rd-hint-right"></div>
+  </div>
+  <nav class="rd-bar">
+    <button class="tile" id="rd-exit" data-dwell><span class="tile-icon">⬅</span><span class="tile-label">Вихід</span></button>
+    <button class="tile" id="rd-library" data-dwell><span class="tile-icon">📚</span><span class="tile-label">Книги</span></button>
+    <button class="tile" id="rd-zoom-out" data-dwell><span class="tile-icon">🔍</span><span class="tile-label">Менше</span></button>
+    <button class="tile" id="rd-fit" data-dwell><span class="tile-icon">↔</span><span class="tile-label">По ширині</span></button>
+    <button class="tile" id="rd-zoom-in" data-dwell><span class="tile-icon">🔎</span><span class="tile-label">Більше</span></button>
+    <button class="tile" id="rd-prev" data-dwell><span class="tile-icon">⏫</span><span class="tile-label">Сторінка назад</span></button>
+    <button class="tile" id="rd-next" data-dwell><span class="tile-icon">⏬</span><span class="tile-label">Сторінка далі</span></button>
+    <button class="tile" id="rd-auto" data-dwell><span class="tile-icon">👁</span><span class="tile-label">Прокрутка очима</span></button>
+    <button class="tile" id="rd-pause" data-dwell data-dwell-always><span class="tile-icon">⏸</span><span class="tile-label">Пауза</span></button>
+  </nav>
+</section>
+
+<div id="modal-layer"></div>
+<div id="gaze-dot"><div class="ring"></div></div>
+<div id="toast" hidden></div>
+
+<script>
+  if (location.protocol === 'file:') {
+    document.body.innerHTML = '<div class="file-warning"><h1>Відкрийте через ЗАПУСК.bat або веб-сервер</h1><p>Браузер не дозволяє камеру та модулі для файлів, відкритих подвійним кліком.</p></div>';
+  }
+</script>
+<script type="module" src="js/reader-main.js"></script>
+</body>
+</html>

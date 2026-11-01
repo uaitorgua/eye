@@ -1,0 +1,12 @@
+AddType text/javascript .mjs
+AddType application/octet-stream .bin .bcmap
+AddType application/wasm .wasm
+Options -Indexes
+
+# HTML, JS і CSS браузер завжди перевіряє на оновлення (ETag): ES-модулі не мають версій у шляхах,
+# і без цього після оновлення сайту змішуються новий index.html і старі модулі — сайт ламається.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|js|mjs|css)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>

@@ -1,0 +1,15 @@
+# серверні cPanel-файли (шляхи хостингу), не код
+site/.user.ini
+site/php.ini
+# секрети/конфіги не зберігати
+*.env
+.env*
+config.local.*
+# медіа й архіви
+*.zip
+*.tgz
+*.tar.gz
+*.wav
+*.mp3
+*.mp4
+.claude/

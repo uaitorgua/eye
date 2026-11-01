@@ -1,0 +1,55 @@
+/* Фігури блок-схеми. Вертикальна лінія йде через .fc-seq, блоки мають непрозорий фон. */
+#chart { display: inline-block; min-width: 100%; }
+.fc-main { margin: 0 auto; }
+.fc-seq { position: relative; display: flex; flex-direction: column; align-items: center; min-width: 260px; }
+.fc-seq::before { content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 4px; margin-left: -2px; background: #56607a; }
+.fc-seq > * { position: relative; z-index: 1; }
+
+.fc-terminal { padding: 16px 40px; border-radius: 999px; background: #1e2a22; border: 3px solid var(--ok); font-weight: 700; font-size: 22px; }
+.fc-terminal.end { border-color: var(--bad); background: #2a1e20; }
+
+/* слот вставки */
+.fc-slot { width: 120px; height: 64px; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 18px; }
+.fc-slot span { width: 48px; height: 48px; border-radius: 50%; background: var(--bg); border: 3px dashed #6c7896;
+  display: flex; align-items: center; justify-content: center; font-size: 30px; color: var(--dim); }
+.fc-slot.dwell-focus span, .fc-slot:hover span { border-style: solid; border-color: var(--ok); color: var(--ok); }
+body.running .fc-slot { visibility: hidden; }
+
+/* блок */
+.fc-block { min-width: 240px; max-width: 520px; min-height: 90px; padding: 12px 28px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center; cursor: pointer; border-radius: 14px;
+  background: #1b2130; border: 4px solid var(--c); --c: var(--accent); }
+.fc-kind { font-size: 16px; color: var(--c); font-weight: 600; }
+.fc-text { font: 600 26px/1.25 Consolas, 'Segoe UI', monospace; word-break: break-word; }
+.kind-output { --c: var(--c-output); border-radius: 4px 40px 4px 40px; }
+.kind-input { --c: var(--c-input); border-radius: 40px 4px 40px 4px; }
+.kind-assign { --c: var(--c-assign); }
+.kind-if { --c: var(--c-if); border-radius: 50px; border-style: double; border-width: 8px; }
+.kind-while { --c: var(--c-while); border-radius: 50px 12px; }
+.kind-for { --c: var(--c-for); border-radius: 50px 12px; }
+.fc-block.active { box-shadow: 0 0 0 6px var(--ok), 0 0 30px var(--ok); }
+.fc-block.error { box-shadow: 0 0 0 6px var(--bad), 0 0 30px var(--bad); }
+
+/* розгалуження */
+.fc-if { display: flex; flex-direction: column; align-items: center; }
+.fc-branches { display: flex; gap: 24px; align-items: stretch; padding-top: 18px; position: relative; background: var(--bg); }
+.fc-branches::before { content: ''; position: absolute; top: 0; left: 25%; right: 25%; height: 4px; background: #56607a; }
+.fc-branch { display: flex; flex-direction: column; align-items: center; padding: 8px; border-radius: 16px; border: 2px dashed #3a4256; }
+.fc-branch .fc-seq { flex: 1; }
+.fc-branch.yes { border-color: rgba(76,208,138,.5); }
+.fc-branch.no { border-color: rgba(255,107,107,.5); }
+.fc-label { font-size: 18px; font-weight: 700; padding: 2px 12px; border-radius: 8px; background: var(--panel-2); }
+.fc-branch.yes .fc-label { color: var(--ok); }
+.fc-branch.no .fc-label { color: var(--bad); }
+.fc-merge { width: 20px; height: 20px; border-radius: 50%; background: #56607a; margin-top: 8px; }
+
+/* цикли */
+/* Тіло циклу — на тій самій осі, що й блок; зліва — дужка повернення від кінця тіла до блоку. */
+.fc-loop { position: relative; display: flex; flex-direction: column; align-items: center; padding: 0 56px; }
+.fc-loop > .fc-block { position: relative; z-index: 2; }
+/* верхнє плече доходить до осі (ховається під блоком), нижнє — з'єднується з віссю після тіла */
+.fc-loop::after { content: ''; position: absolute; left: 10px; right: 50%; top: 45px; bottom: 16px; z-index: 1;
+  border: 4px solid var(--c-while); border-right: none; border-radius: 22px 0 0 22px; pointer-events: none; }
+.fc-loop:has(> .kind-for)::after { border-color: var(--c-for); }
+.fc-loop-body { align-self: stretch; display: flex; justify-content: center; }
+.fc-label.back { position: absolute; left: 0; bottom: 0; color: var(--c-while); font-size: 16px; }

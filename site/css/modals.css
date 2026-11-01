@@ -1,0 +1,65 @@
+/* Модалки: займають майже весь екран, щоб плитки були якомога більшими. */
+#modal-layer > .modal { position: fixed; inset: 0; z-index: 5000; display: flex; flex-direction: column;
+  padding: 20px 28px; background: rgba(12,14,19,.97); }
+.modal-title { margin: 0 0 16px; font-size: 32px; text-align: center; }
+.modal-body { flex: 1; display: flex; flex-direction: column; gap: var(--gap); min-height: 0; }
+.grid { display: grid; grid-template-columns: repeat(var(--cols), 1fr); gap: var(--gap); grid-auto-rows: minmax(110px, 1fr); flex: 1; }
+.tile.var { font-family: Consolas, monospace; font-size: 30px; color: var(--c-assign); }
+.tile.op { font-size: 34px; color: var(--warn); }
+.tile.digit, .tile.key { font-size: 36px; }
+.tile[class*="block-"] { font-size: 28px; }
+.block-output { border-color: var(--c-output); } .block-input { border-color: var(--c-input); }
+.block-assign { border-color: var(--c-assign); } .block-if { border-color: var(--c-if); }
+.block-while { border-color: var(--c-while); } .block-for { border-color: var(--c-for); }
+
+/* редактор виразу */
+.expr-top { display: flex; gap: 16px; align-items: center; }
+.expr-display, .kb-display { flex: 1; min-height: 90px; padding: 14px 20px; border-radius: 14px; background: #0a0c10;
+  border: 3px solid var(--border); font: 600 38px/1.2 Consolas, monospace; display: flex; align-items: center; word-break: break-word; }
+.modal-body > .kb-display { flex: 0 0 auto; }
+.expr-status { width: 360px; font-size: 20px; }
+.expr-status.ok { color: var(--ok); } .expr-status.bad { color: var(--warn); }
+.expr-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); }
+.expr-tabs .tile { min-height: 80px; }
+.expr-main, .kb-main { flex: 1; display: flex; gap: var(--gap); min-height: 0; }
+.expr-pad { flex: 1; display: flex; }
+.expr-side, .kb-side { width: 230px; display: flex; flex-direction: column; gap: var(--gap); }
+.expr-side .tile, .kb-side .tile { flex: 1; min-height: 80px; }
+
+/* налаштування: усе на одному екрані без прокрутки (очима прокрутити не можна).
+   Повзунки — 2 колонки, кожен: назва зверху, [−] значення [+]; висоти діляться порівну. */
+.settings .modal-title { margin-bottom: 8px; font-size: 28px; }
+.settings .modal-body { overflow: hidden; gap: var(--gap); }
+.steppers { flex: 3; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: var(--gap); }
+.stepper { min-height: 0; display: grid; grid-template-columns: 1fr 1.2fr 1fr; grid-template-rows: auto 1fr;
+  column-gap: 8px; padding: 6px 10px 10px; border-radius: 14px; background: var(--panel); }
+.stepper-label { grid-column: 1 / -1; font-size: 20px; color: var(--dim); }
+.stepper-value { align-self: center; text-align: center; font: 700 28px Consolas, monospace; }
+.settings .stepper .tile { min-height: 0; min-width: 0; }
+.settings .grid { flex: 2; min-height: 0; grid-auto-rows: 1fr; }
+.settings .grid .tile { min-height: 0; font-size: 19px; }
+
+/* перевірка очей */
+.eye-state { font-size: 40px; text-align: center; }
+.eye-bar { position: relative; height: 70px; border-radius: 14px; background: #0a0c10; border: 3px solid var(--border); overflow: hidden; }
+.eye-fill { height: 100%; width: 0; background: var(--ok); transition: width .05s linear; }
+.eye-fill.closed { background: var(--warn); }
+.eye-mark { position: absolute; top: 0; bottom: 0; width: 4px; background: var(--bad); }
+.eye-row { flex: 1; display: flex; gap: var(--gap); min-height: 0; }
+.eye-stats { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 12px; font-size: 28px; }
+.eye-stats b { color: var(--ok); }
+.eye-target { flex: 1; font-size: 34px; }
+.eye-close { flex: 0 0 110px; }
+
+/* калібрування */
+.modal.calib { background: #000 !important; }
+.calib-msg { margin: auto auto 80px auto; text-align: center; font-size: 26px; position: relative; z-index: 10010; }
+.calib-msg.small { position: absolute; left: 0; right: 0; top: 35%; color: var(--dim); }
+/* червона — чекаємо, поки око зупиниться на точці;
+   зелена — око на точці, йде збір (точка зменшується з прогресом);
+   done — точку зібрано: коротко світиться зеленим, потім з'являється наступна */
+.calib-dot { position: absolute; width: 80px; height: 80px; margin: -40px 0 0 -40px; border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 9px, var(--bad) 10px); box-shadow: 0 0 30px var(--bad);
+  transition: transform .15s linear, background .2s, box-shadow .2s; }
+.calib-dot.settled { background: radial-gradient(circle, #fff 0 9px, var(--ok) 10px); box-shadow: 0 0 30px var(--ok); }
+.calib-dot.done { background: var(--ok); box-shadow: 0 0 60px 20px var(--ok); }

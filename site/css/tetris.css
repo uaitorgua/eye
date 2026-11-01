@@ -1,0 +1,34 @@
+/* Тетріс — відпочинок для очей. Займає ВЕСЬ екран поверх програми.
+   Керування лише великими зонами: ◀ ліворуч, ▶ праворуч (повтор при погляді),
+   поле = повернути, смуга знизу = впустити. */
+.hidden { display: none !important; }
+
+#tetris-section { position: fixed; inset: 0; z-index: 4000; display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto minmax(160px, 1fr); gap: var(--gap); padding: var(--gap);
+  background: #07090d; }
+
+.tz { font-size: 64px; }
+.tz-left .tile-icon, .tz-right .tile-icon { font-size: 110px; }
+.tz-left, .tz-right { height: 100%; border-color: var(--accent); }
+.tz-right-col { display: grid; grid-template-rows: 130px 1fr; gap: var(--gap); }
+.tz-exit { font-size: 22px; border-color: #555; }
+
+.tz-center { display: flex; flex-direction: column; gap: var(--gap); min-height: 0; }
+.tetris-info { display: flex; align-items: center; justify-content: center; gap: 24px; height: 64px;
+  font-size: 20px; color: var(--dim); }
+.tetris-info b { color: var(--ok); font-size: 26px; font-variant-numeric: tabular-nums; }
+#tetris-next-canvas { height: 60px; width: 60px; border-radius: 8px; background: var(--panel-2); }
+
+/* поле-кнопка «повернути» */
+.tz-rotate { flex: 1; min-height: 0; padding: 0; border: 3px solid var(--border); border-radius: 10px;
+  background: #0a0c10; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.tz-rotate.dwell-focus { border-color: var(--warn); outline: none; }
+#tetris-canvas { display: block; }
+.tz-drop { height: 120px; flex-shrink: 0; border-color: var(--warn); flex-direction: row; gap: 16px; font-size: 30px; }
+
+.tetris-overlay { position: fixed; inset: 0; z-index: 4001; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 20px; background: rgba(7,9,13,.92); }
+.tetris-overlay-title { font-size: 48px; font-weight: 700; }
+.tetris-overlay-score { font-size: 30px; color: var(--dim); }
+.tetris-overlay-actions { display: flex; gap: 24px; }
+.tetris-overlay-actions .tile { min-width: 260px; min-height: 160px; }

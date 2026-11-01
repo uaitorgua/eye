@@ -1,0 +1,164 @@
+﻿<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UAIT Eye — керування комп’ютером очима</title>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/home.css">
+<link rel="stylesheet" href="css/flowchart.css">
+<link rel="stylesheet" href="css/modals.css">
+<link rel="stylesheet" href="css/tetris.css">
+<link rel="stylesheet" href="css/reader.css">
+<link rel="stylesheet" href="css/browser.css">
+<link rel="stylesheet" href="css/relax.css">
+<script src="lib/webgazer.js"></script>
+</head>
+<body>
+<header id="toolbar">
+  <button class="tile tool home" id="btn-home" data-dwell><span class="tile-icon">🏠</span><span class="tile-label">Меню</span></button>
+  <button class="tile tool pause" id="btn-pause" data-dwell data-dwell-always><span class="tile-icon">👁</span><span class="tile-label">Пауза</span></button>
+  <button class="tile tool run" id="btn-run" data-dwell><span class="tile-icon">▶</span><span class="tile-label">Запуск</span></button>
+  <button class="tile tool" id="btn-step" data-dwell><span class="tile-icon">👣</span><span class="tile-label">Крок</span></button>
+  <button class="tile tool stop" id="btn-stop" data-dwell><span class="tile-icon">■</span><span class="tile-label">Стоп</span></button>
+  <div class="spacer"><div id="cam-status">…</div></div>
+  <button class="tile tool" id="btn-file" data-dwell><span class="tile-icon">📁</span><span class="tile-label">Файл</span></button>
+  <button class="tile tool" id="btn-calib" data-dwell hidden><span class="tile-icon">🎯</span><span class="tile-label">Калібрувати</span></button>
+  <button class="tile tool" id="btn-settings" data-dwell><span class="tile-icon">⚙</span><span class="tile-label">Налаштування</span></button>
+</header>
+
+<main id="main">
+  <section id="chart-panel">
+    <div id="chart-wrap"><div id="chart"></div></div>
+    <nav id="scroller">
+      <button class="tile" id="scroll-up" data-dwell data-dwell-repeat>▲</button>
+      <button class="tile" id="scroll-left" data-dwell data-dwell-repeat>◀</button>
+      <button class="tile" id="scroll-right" data-dwell data-dwell-repeat>▶</button>
+      <button class="tile" id="scroll-down" data-dwell data-dwell-repeat>▼</button>
+    </nav>
+  </section>
+  <aside id="side">
+    <h3>💬 Екран програми</h3>
+    <div id="console-out"></div>
+    <h3>📦 Змінні</h3>
+    <div id="vars"></div>
+  </aside>
+</main>
+
+<!-- Головне вікно: вибір підсистеми поглядом. Має стояти ПЕРЕД шарами Тетрісу й Книг,
+     щоб відкрита підсистема була верхнім шаром для dwell. Логіка — js/portal/home.js -->
+<section id="home-section" class="hidden" data-layer>
+  <div class="home-head">
+    <h1>👁 Що відкриємо?</h1>
+    <div id="home-status">…</div>
+  </div>
+  <div class="home-grid">
+    <button class="tile home-tile books" data-dwell data-system="books"><span class="tile-icon">📖</span><span class="tile-label">Книги</span><span class="tile-sub">читати PDF очима</span></button>
+    <button class="tile home-tile flow" data-dwell data-system="flow"><span class="tile-icon">🧩</span><span class="tile-label">Алгоритми</span><span class="tile-sub">блок-схеми</span></button>
+    <button class="tile home-tile browser" data-dwell data-system="browser"><span class="tile-icon">🌐</span><span class="tile-label">Браузер</span><span class="tile-sub">сайти й новини</span></button>
+    <button class="tile home-tile tetris" data-dwell data-system="tetris"><span class="tile-icon">🎮</span><span class="tile-label">Тетріс</span><span class="tile-sub">відпочинок для очей</span></button>
+    <button class="tile home-tile trainer" data-dwell data-system="trainer"><span class="tile-icon">🧘</span><span class="tile-label">Тренажер</span><span class="tile-sub">розслаблення очей</span></button>
+  </div>
+  <div class="home-bar">
+    <button class="tile" id="home-pause" data-dwell data-dwell-always><span class="tile-icon">⏸</span><span class="tile-label">Пауза</span></button>
+    <button class="tile" id="home-settings" data-dwell><span class="tile-icon">⚙</span><span class="tile-label">Налаштування</span></button>
+  </div>
+</section>
+
+<!-- Тетріс: відпочинок для очей. Повний екран, лише великі зони погляду. -->
+<section id="tetris-section" class="hidden" data-layer>
+  <button class="tile tz tz-left" id="tz-left" data-dwell data-dwell-repeat><span class="tile-icon">◀</span></button>
+  <div class="tz-center">
+    <div class="tetris-info">
+      <span>Рахунок <b id="tetris-score">0</b></span><span>Лінії <b id="tetris-lines">0</b></span><span>Рівень <b id="tetris-level">1</b></span>
+      <canvas id="tetris-next-canvas" width="120" height="120"></canvas>
+    </div>
+    <button class="tz tz-rotate" id="tz-rotate" data-dwell title="Повернути"><canvas id="tetris-canvas" width="300" height="600"></canvas></button>
+    <button class="tile tz tz-drop" id="tz-drop" data-dwell><span class="tile-icon">⬇</span><span class="tile-label">Впустити</span></button>
+  </div>
+  <div class="tz-right-col">
+    <button class="tile tz tz-exit" id="btn-tetris-exit" data-dwell><span class="tile-icon">🚪</span><span class="tile-label">Вихід</span></button>
+    <button class="tile tz tz-right" id="tz-right" data-dwell data-dwell-repeat><span class="tile-icon">▶</span></button>
+  </div>
+  <div class="tetris-overlay hidden" id="tetris-overlay" data-layer>
+    <div class="tetris-overlay-title">Гарна гра! 🙂</div>
+    <div class="tetris-overlay-score">Рахунок: <span id="tetris-final-score">0</span></div>
+    <div class="tetris-overlay-actions">
+      <button class="tile" id="btn-tetris-restart" data-dwell><span class="tile-icon">🔄</span><span class="tile-label">Знову</span></button>
+      <button class="tile" id="btn-tetris-overlay-exit" data-dwell><span class="tile-icon">🚪</span><span class="tile-label">Вихід</span></button>
+    </div>
+  </div>
+</section>
+
+<!-- Читанка PDF: повноекранний шар. Логіка — js/reader/reader.js -->
+<section id="reader-section" class="hidden" data-layer>
+  <div class="rd-top"><span id="rd-title">Книги</span><span id="rd-page"></span></div>
+  <div class="rd-main">
+    <div id="reader-view"><div id="reader-pages"></div></div>
+    <div class="rd-hint" id="rd-hint-top"></div><div class="rd-hint" id="rd-hint-bottom"></div>
+    <div class="rd-hint" id="rd-hint-left"></div><div class="rd-hint" id="rd-hint-right"></div>
+  </div>
+  <nav class="rd-bar">
+    <button class="tile" id="rd-exit" data-dwell><span class="tile-icon">⬅</span><span class="tile-label">Вихід</span></button>
+    <button class="tile" id="rd-library" data-dwell><span class="tile-icon">📚</span><span class="tile-label">Книги</span></button>
+    <button class="tile" id="rd-zoom-out" data-dwell><span class="tile-icon">🔍</span><span class="tile-label">Менше</span></button>
+    <button class="tile" id="rd-fit" data-dwell><span class="tile-icon">↔</span><span class="tile-label">По ширині</span></button>
+    <button class="tile" id="rd-zoom-in" data-dwell><span class="tile-icon">🔎</span><span class="tile-label">Більше</span></button>
+    <button class="tile" id="rd-prev" data-dwell><span class="tile-icon">⏫</span><span class="tile-label">Сторінка назад</span></button>
+    <button class="tile" id="rd-next" data-dwell><span class="tile-icon">⏬</span><span class="tile-label">Сторінка далі</span></button>
+    <button class="tile" id="rd-auto" data-dwell><span class="tile-icon">👁</span><span class="tile-label">Прокрутка очима</span></button>
+    <button class="tile" id="rd-pause" data-dwell data-dwell-always><span class="tile-icon">⏸</span><span class="tile-label">Пауза</span></button>
+  </nav>
+</section>
+
+<!-- Браузер: спрощені сторінки дозволених сайтів. Логіка — js/browser/browser.js, сервер — browser.php -->
+<section id="browser-section" class="hidden" data-layer>
+  <div class="br-top"><span id="br-title">Браузер</span><span id="br-host"></span></div>
+  <div class="br-main">
+    <div id="br-view"></div>
+    <div class="rd-hint br-hint-top" id="br-hint-top"></div><div class="rd-hint br-hint-bottom" id="br-hint-bottom"></div>
+  </div>
+  <nav class="br-bar">
+    <button class="tile" id="br-exit" data-dwell><span class="tile-icon">🏠</span><span class="tile-label">Меню</span></button>
+    <button class="tile" id="br-back" data-dwell><span class="tile-icon">◀</span><span class="tile-label">Назад</span></button>
+    <button class="tile" id="br-sites" data-dwell><span class="tile-icon">🔖</span><span class="tile-label">Сайти</span></button>
+    <button class="tile br-links" id="br-links" data-dwell><span class="tile-icon">🔗</span><span class="tile-label">Посилання</span></button>
+    <button class="tile" id="br-up" data-dwell><span class="tile-icon">⏫</span><span class="tile-label">Вище</span></button>
+    <button class="tile" id="br-down" data-dwell><span class="tile-icon">⏬</span><span class="tile-label">Нижче</span></button>
+    <button class="tile" id="br-font" data-dwell><span class="tile-icon">🔠</span><span class="tile-label">Шрифт</span></button>
+    <button class="tile" id="br-pause" data-dwell data-dwell-always><span class="tile-icon">⏸</span><span class="tile-label">Пауза</span></button>
+  </nav>
+</section>
+
+<!-- Тренажер розслаблення очей: керована рутина вправ гігієни зору. Логіка — js/relax/relax.js -->
+<section id="relax-section" class="hidden" data-layer>
+  <div class="relax-top">
+    <span id="relax-title">Розслаблення очей</span>
+    <span id="relax-progress"></span>
+  </div>
+  <div class="relax-stage" id="relax-stage">
+    <div id="relax-dot"></div>
+    <div class="relax-timer-wrap"><div id="relax-ring"><span id="relax-timer">0</span></div></div>
+  </div>
+  <div id="relax-hint"></div>
+  <div class="relax-note">Вправи знімають зорову втому й сухість очей, але не виправляють короткозорість чи астигматизм. Режим кліпання (15 повторів «заплющ-стисни-розплющ») узято з клінічного дослідження. Під час вправ із заплющуванням керування поглядом тимчасово вимкнено, щоб кліпання не натискало кнопки. Не замінює консультацію офтальмолога.</div>
+  <nav class="relax-bar">
+    <button class="tile" id="btn-relax-exit" data-dwell><span class="tile-icon">🚪</span><span class="tile-label">Вихід</span></button>
+    <button class="tile" id="relax-prev" data-dwell><span class="tile-icon">⏮</span><span class="tile-label">Назад</span></button>
+    <button class="tile" id="relax-pause" data-dwell data-dwell-always><span class="tile-icon">⏸</span><span class="tile-label">Пауза</span></button>
+    <button class="tile" id="relax-next" data-dwell><span class="tile-icon">⏭</span><span class="tile-label">Далі</span></button>
+  </nav>
+</section>
+
+<div id="modal-layer"></div>
+<div id="gaze-dot"><div class="ring"></div></div>
+<div id="toast" hidden></div>
+
+<script>
+  if (location.protocol === 'file:') {
+    document.body.innerHTML = '<div class="file-warning"><h1>Відкрийте через ЗАПУСК.bat</h1><p>Браузер не дозволяє камеру та модулі для файлів, відкритих подвійним кліком.</p></div>';
+  }
+</script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

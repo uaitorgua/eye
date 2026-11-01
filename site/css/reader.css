@@ -1,0 +1,32 @@
+/* Читанка PDF: весь екран; зверху — тонкий рядок назви, посередині — сторінки, знизу — панель керування. */
+#reader-section { position: fixed; inset: 0; z-index: 3500; display: flex; flex-direction: column; background: #07090d; }
+
+.rd-top { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 6px 16px; height: 40px;
+  color: var(--dim); font-size: 18px; flex-shrink: 0; }
+#rd-title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#rd-page { color: var(--text); font-weight: 600; white-space: nowrap; }
+
+.rd-main { position: relative; flex: 1; min-height: 0; }
+#reader-view { position: absolute; inset: 0; overflow: auto; background: #3a3f4a; }
+#reader-pages { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 16px 24px; min-width: min-content; }
+.pdf-page { position: relative; flex-shrink: 0; background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,.5); }
+.pdf-page canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* підказки зон прокрутки: з'являються, коли погляд у зоні; яскравіють, коли рух починається */
+.rd-hint { position: absolute; pointer-events: none; opacity: 0; transition: opacity .15s; z-index: 2; }
+#rd-hint-top { left: 0; right: 0; top: 0; height: 16%; background: linear-gradient(rgba(90,169,255,.45), transparent); }
+#rd-hint-bottom { left: 0; right: 0; bottom: 0; height: 24%; background: linear-gradient(transparent, rgba(90,169,255,.45)); }
+#rd-hint-left { top: 0; bottom: 0; left: 0; width: 12%; background: linear-gradient(90deg, rgba(90,169,255,.45), transparent); }
+#rd-hint-right { top: 0; bottom: 0; right: 0; width: 12%; background: linear-gradient(270deg, rgba(90,169,255,.45), transparent); }
+
+.rd-bar { display: grid; grid-template-columns: repeat(9, 1fr); gap: 10px; padding: 10px; height: 130px; flex-shrink: 0;
+  background: var(--panel); border-top: 2px solid var(--border); }
+.rd-bar .tile { min-width: 0; min-height: 0; font-size: 18px; }
+.rd-bar .tile-icon { font-size: 32px; }
+#rd-zoom-out, #rd-zoom-in { border-color: var(--accent); }
+#rd-prev, #rd-next { border-color: var(--c-for); }
+#rd-exit { border-color: #555; }
+
+.library .grid { grid-auto-rows: minmax(120px, 1fr); }
+.tile.book { font-size: 22px; text-align: center; }
+.library-empty { text-align: center; font-size: 24px; color: var(--dim); margin: 0; }

@@ -1,0 +1,36 @@
+/* Головне вікно вибору підсистеми. Шар над Алгоритмами, під Книгами (3500), Тетрісом (4000) і модалками (5000). */
+#home-section { position: fixed; inset: 0; z-index: 3000; display: flex; flex-direction: column; gap: 18px;
+  padding: 22px; background: var(--bg); }
+
+.home-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.home-head h1 { margin: 0; font-size: 40px; }
+#home-status { color: var(--dim); font-size: 18px; text-align: right; }
+#home-status.ok { color: var(--ok); }
+#home-status.error { color: var(--bad); }
+
+/* Великі плитки підсистем: мін. ~260×200 px, щоб влучати поглядом навіть при слабкому калібруванні. */
+/* Без прокрутки: сітка ділить доступну висоту, розміри тексту залежать від висоти вікна. */
+.home-grid { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: minmax(0, 1fr); gap: 22px; min-height: 0; }
+.home-tile { min-height: 0; min-width: 0; border-width: 5px; gap: 8px; }
+.home-tile .tile-icon { font-size: clamp(40px, 9vh, 84px); }
+.home-tile .tile-label { font-size: clamp(26px, 4.5vh, 40px); font-weight: 700; }
+.home-tile .tile-sub { font-size: clamp(15px, 2.2vh, 20px); }
+.home-tile.books   { border-color: #3fd0d0; }
+.home-tile.flow    { border-color: var(--c-assign); }
+.home-tile.browser { border-color: #b98cff; }
+.home-tile.tetris  { border-color: var(--warn); }
+.home-tile.trainer { border-color: var(--ok); }
+.home-tile.soon { opacity: .55; }
+.home-tile.soon .tile-sub { color: var(--warn); }
+
+.home-bar { display: flex; justify-content: center; gap: 22px; flex-shrink: 0; }
+.home-bar .tile { min-width: 240px; min-height: clamp(80px, 13vh, 110px); }
+#home-pause.active { border-color: var(--warn); background: #3a2f12; }
+
+@media (max-width: 700px) {
+  .home-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .home-head h1 { font-size: 30px; }
+}
+
+/* Кнопка «Меню» в тулбарі Алгоритмів */
+#btn-home { border-color: var(--accent); }
