@@ -30,3 +30,19 @@
 .library .grid { grid-auto-rows: minmax(120px, 1fr); }
 .tile.book { font-size: 22px; text-align: center; }
 .library-empty { text-align: center; font-size: 24px; color: var(--dim); margin: 0; }
+
+/* Вузькі екрани: 9 кнопок не вміщаються (≈31px). Основні (вихід, сторінки, пауза) завжди в панелі,
+   масштаб, бібліотека й прокрутка очима — на сторінці «Ще». */
+.rd-more { display: none; }
+@media (max-width: 700px) {
+  .rd-bar { grid-template-columns: 1fr 1fr 1fr 1fr 1.7fr; height: 104px; gap: 8px; padding: 8px; }
+  .rd-bar .tile { padding: 4px; gap: 2px; }
+  .rd-bar .tile-label { font-size: 14px; line-height: 1.1; overflow-wrap: anywhere; text-align: center; }
+  .rd-bar .tile-icon { font-size: 28px; }
+  .rd-more { display: flex; }
+  .rd-bar #rd-pause .tile-label { font-size: 13px; }
+  .rd-bar #rd-library, .rd-bar #rd-zoom-out, .rd-bar #rd-fit, .rd-bar #rd-zoom-in, .rd-bar #rd-auto { display: none; }
+  .rd-bar.more { grid-template-columns: repeat(4, 1fr); grid-template-rows: 1fr 1fr; height: 200px; }
+  .rd-bar.more #rd-library, .rd-bar.more #rd-zoom-out, .rd-bar.more #rd-fit, .rd-bar.more #rd-zoom-in, .rd-bar.more #rd-auto { display: flex; }
+  .rd-bar.more #rd-exit, .rd-bar.more #rd-prev, .rd-bar.more #rd-next { display: none; }
+}

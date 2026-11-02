@@ -38,6 +38,11 @@ export function initReader({ standalone: alone = false } = {}) {
   bind('rd-next', () => view.goToPage(view.position().page + 1));
   bind('rd-auto', () => updateSettings({ readerAutoScroll: !store.settings.readerAutoScroll }));
   bind('rd-pause', () => emit('toggle-pause'));
+  // Вузькі екрани: основні кнопки в панелі, решта — на сторінці «Ще».
+  bind('rd-more', () => {
+    const more = $('reader-section').querySelector('.rd-bar').classList.toggle('more');
+    $('rd-more').querySelector('.tile-label').textContent = more ? 'Готово' : 'Ще';
+  });
   on('settings-changed', renderBar);
   on('pause-changed', renderBar);
 
@@ -74,6 +79,8 @@ async function openStandaloneMenu() {
 export function closeReader() {
   saveNow();
   setDotDim(false);           // повертаємо яскраву точку за межами читанки
+  $('reader-section').querySelector('.rd-bar').classList.remove('more');
+  $('rd-more').querySelector('.tile-label').textContent = 'Ще';
   section.classList.add('hidden');
 }
 
@@ -124,7 +131,7 @@ function saveNow() {
 
 function renderBar() {
   const s = store.settings;
-  $('rd-auto').querySelector('.tile-label').textContent = s.readerAutoScroll ? 'Прокрутка очима: так' : 'Прокрутка очима: ні';
+  $('rd-auto').querySelector('.tile-label').textContent = s.readerAutoScroll ? 'Прокрутка: так' : 'Прокрутка: ні';
   $('rd-auto').classList.toggle('active', s.readerAutoScroll);
   $('rd-pause').querySelector('.tile-label').textContent = store.paused ? 'Продовжити' : 'Пауза';
 }
