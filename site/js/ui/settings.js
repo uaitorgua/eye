@@ -54,7 +54,7 @@ export function openSettings() {
         tile('Перевірка очей', () => openEyeTest(), { icon: '👁' }),
       ] : []),
       tile('Вийти', () => { window.close(); location.href = 'about:blank'; }, { icon: '🚪', cls: 'danger' }),
-      tile('Закрити', () => m.close(), { icon: '✓', cls: 'ok' }));
+      tile('Закрити', () => m.close(), { icon: '✓', cls: 'ok settings-close', always: true }));
     m.body.replaceChildren(h('div', { class: 'steppers' }, ...rows), toggles);
   }
   render();

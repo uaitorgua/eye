@@ -16,7 +16,7 @@ import { cue } from '../core/cue.js';
 // Озвучення плиток меню, коли на них потрапляє погляд (для незрячих / слабозорих).
 const TILE_SAY = {
   books: 'Книги', flow: 'Алгоритми', browser: 'Браузер',
-  tetris: 'Тетріс', trainer: 'Тренажер, розслаблення очей',
+  tetris: 'Тетріс', trainer: 'Вправи для погляду',
 };
 
 const $ = (id) => document.getElementById(id);
@@ -51,6 +51,8 @@ export function openSystem(name) {
 }
 
 export function initHome() {
+  $('home-status').textContent = $('cam-status').textContent === '…' ? 'Оберіть спосіб керування' : $('cam-status').textContent;
+  $('home-status').className = $('cam-status').className;
   const tiles = [...document.querySelectorAll('#home-section [data-system]')];
   for (const tile of tiles) {
     tile.addEventListener('dwell', () => openSystem(tile.dataset.system));

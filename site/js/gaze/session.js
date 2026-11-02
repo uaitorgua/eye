@@ -140,6 +140,6 @@ async function applyMode() {
     else toast('Камера працює. Якщо точка погляду «гуляє» — натисніть 🎯', 4000);
   } else {
     if (els.calibBtn) els.calibBtn.hidden = true;
-    if (els.statusEl) { els.statusEl.textContent = 'Режим: миша / трекер'; els.statusEl.className = 'ok'; }
+    emit('cam-status', { text: 'Режим: миша / трекер', ok: true });
   }
 }

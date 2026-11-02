@@ -47,21 +47,36 @@
 
 <!-- Головне вікно: вибір підсистеми поглядом. Має стояти ПЕРЕД шарами Тетрісу й Книг,
      щоб відкрита підсистема була верхнім шаром для dwell. Логіка — js/portal/home.js -->
-<section id="home-section" class="hidden" data-layer>
+<section id="home-section" class="hidden" data-layer aria-labelledby="home-title">
+  <svg class="home-symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="home-arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6"/></symbol>
+    <symbol id="home-flow" viewBox="0 0 100 100"><path d="M50 26v24M24 72V50h52v22" fill="none" stroke="currentColor" stroke-width="4"/><rect x="32" y="6" width="36" height="24" rx="5" fill="#1856d8"/><path d="m50 34 14 16-14 16-14-16z" fill="#efb21d"/><circle cx="24" cy="80" r="13" fill="#dedbd2"/><rect x="64" y="67" width="26" height="26" rx="5" fill="#1856d8"/></symbol>
+    <symbol id="home-globe" viewBox="0 0 100 100"><circle cx="50" cy="50" r="36" fill="#1856d8"/><g fill="none" stroke="currentColor" stroke-width="3"><ellipse cx="50" cy="50" rx="17" ry="36"/><path d="M14 50h72M22 28h56M22 72h56"/></g><ellipse cx="50" cy="50" rx="48" ry="13" transform="rotate(-24 50 50)" fill="none" stroke="#efb21d" stroke-width="4"/></symbol>
+    <symbol id="home-game" viewBox="0 0 64 48"><path d="M17 8h30c8 0 11 7 13 17l2 12c1 9-7 9-12 4l-8-7H22l-8 7C9 46 1 46 2 37l2-12C6 15 9 8 17 8z" fill="#1856d8"/><path d="M18 17v15m-7-8h14" stroke="#fffdf8" stroke-width="4" stroke-linecap="round"/><circle cx="43" cy="18" r="3" fill="#efb21d"/><circle cx="51" cy="26" r="3" fill="#efb21d"/></symbol>
+    <symbol id="home-eye" viewBox="0 0 64 48"><path d="M3 27s11-16 29-16 29 16 29 16-11 16-29 16S3 27 3 27z" fill="none" stroke="currentColor" stroke-width="4"/><circle cx="32" cy="27" r="9" fill="#1856d8"/><path d="M32 1v5M12 4l4 5m36-5-4 5" stroke="#efb21d" stroke-width="4" stroke-linecap="round"/></symbol>
+  </defs></svg>
   <div class="home-head">
-    <h1>👁 Що відкриємо?</h1>
-    <div id="home-status">…</div>
+    <div class="home-brand">UAIT <span>Eye</span><span class="home-brand-line" aria-hidden="true"></span></div>
+    <div id="home-status" role="status">Оберіть спосіб керування</div>
   </div>
+  <div class="home-intro"><h1 id="home-title">Продовжимо вчитись?</h1><p>Обери, що хочеш зробити зараз.</p></div>
   <div class="home-grid">
-    <button class="tile home-tile books" data-dwell data-system="books"><span class="tile-icon">📖</span><span class="tile-label">Книги</span><span class="tile-sub">читати PDF очима</span></button>
-    <button class="tile home-tile flow" data-dwell data-system="flow"><span class="tile-icon">🧩</span><span class="tile-label">Алгоритми</span><span class="tile-sub">блок-схеми</span></button>
-    <button class="tile home-tile browser" data-dwell data-system="browser"><span class="tile-icon">🌐</span><span class="tile-label">Браузер</span><span class="tile-sub">сайти й новини</span></button>
-    <button class="tile home-tile tetris" data-dwell data-system="tetris"><span class="tile-icon">🎮</span><span class="tile-label">Тетріс</span><span class="tile-sub">відпочинок для очей</span></button>
-    <button class="tile home-tile trainer" data-dwell data-system="trainer"><span class="tile-icon">🧘</span><span class="tile-label">Тренажер</span><span class="tile-sub">розслаблення очей</span></button>
+    <button class="tile home-tile books" data-dwell data-system="books">
+      <svg class="home-book-art" viewBox="0 0 300 240" aria-hidden="true"><path d="M27 64c43-13 83-1 123 21 40-22 80-34 123-21v128c-43-13-83-1-123 21-40-22-80-34-123-21z" fill="#0d3686" transform="translate(0 10)"/><path d="M30 55c42-12 80 0 120 22v124c-40-22-78-34-120-22z" fill="#fffaf0" stroke="#ddd4bf" stroke-width="3"/><path d="M150 77c40-22 78-34 120-22v124c-42-12-80 0-120 22z" fill="#f2ead7" stroke="#ddd4bf" stroke-width="3"/><path d="M150 77v124" stroke="#c8bda2" stroke-width="4"/><g stroke="#d6cbb2" stroke-width="3" fill="none" stroke-linecap="round"><path d="M55 85c25 0 46 6 69 17m-69 8c25 0 46 6 69 17m-69 8c25 0 46 6 69 17m52-50c23-11 44-17 69-17m-69 42c23-11 44-17 69-17m-69 42c23-11 44-17 69-17"/></g><path d="M161 198v31l14-9 14 9v-44" fill="#efb21d"/><path d="M75 32 63 18m48 7-2-20m36 24 9-16" stroke="#efb21d" stroke-width="6" stroke-linecap="round"/></svg>
+      <span class="home-tile-copy"><span class="tile-label">Книги</span><span class="tile-sub">Підручники й читання</span><span class="home-book-cta">Відкрити бібліотеку <svg aria-hidden="true"><use href="#home-arrow"/></svg></span></span>
+    </button>
+    <button class="tile home-tile flow" data-dwell data-system="flow"><svg class="home-section-art" aria-hidden="true"><use href="#home-flow"/></svg><span class="home-tile-copy"><span class="tile-label">Алгоритми</span><span class="tile-sub">Логіка та блок-схеми</span></span><svg class="home-arrow" aria-hidden="true"><use href="#home-arrow"/></svg></button>
+    <button class="tile home-tile browser" data-dwell data-system="browser"><svg class="home-section-art" aria-hidden="true"><use href="#home-globe"/></svg><span class="home-tile-copy"><span class="tile-label">Інтернет</span><span class="tile-sub">Сайти й новини</span></span><svg class="home-arrow" aria-hidden="true"><use href="#home-arrow"/></svg></button>
+  </div>
+  <div class="home-breaks">
+    <div class="home-break-copy"><h2>На перерву</h2><p>Трохи часу для себе.</p></div>
+    <button class="tile home-tile tetris" data-dwell data-system="tetris"><svg class="home-section-art" aria-hidden="true"><use href="#home-game"/></svg><span class="tile-label">Тетріс</span><svg class="home-arrow" aria-hidden="true"><use href="#home-arrow"/></svg></button>
+    <button class="tile home-tile trainer" data-dwell data-system="trainer"><svg class="home-section-art" aria-hidden="true"><use href="#home-eye"/></svg><span class="tile-label">Вправи для погляду</span><svg class="home-arrow" aria-hidden="true"><use href="#home-arrow"/></svg></button>
   </div>
   <div class="home-bar">
-    <button class="tile" id="home-pause" data-dwell data-dwell-always><span class="tile-icon">⏸</span><span class="tile-label">Пауза</span></button>
-    <button class="tile" id="home-settings" data-dwell><span class="tile-icon">⚙</span><span class="tile-label">Налаштування</span></button>
+    <span class="home-footnote">Навчайся у своєму темпі.</span>
+    <button class="tile" id="home-pause" data-dwell data-dwell-always><svg class="home-control-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg><span class="tile-label">Пауза</span></button>
+    <button class="tile" id="home-settings" data-dwell><svg class="home-control-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/></svg><span class="tile-label">Налаштування</span></button>
   </div>
 </section>
 
