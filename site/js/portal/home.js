@@ -12,6 +12,7 @@ import { openReader, closeReader } from '../reader/reader.js';
 import { openBrowser, closeBrowser } from '../browser/browser.js';
 import { openRelax, closeRelax } from '../relax/relax.js';
 import { cue } from '../core/cue.js';
+import { iconElement } from '../ui/icons.js';
 
 // Озвучення плиток меню, коли на них потрапляє погляд (для незрячих / слабозорих).
 const TILE_SAY = {
@@ -92,7 +93,7 @@ export function initHome() {
     const label = btn.querySelector('.tile-label');
     if (label) label.textContent = 'Меню';
     const icon = btn.querySelector('.tile-icon');
-    if (icon) icon.textContent = '🏠';
+    if (icon) icon.replaceChildren(iconElement('🏠'));
   }
 
   const route = location.hash.replace(/^#\/?/, '');

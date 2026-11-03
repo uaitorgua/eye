@@ -48,7 +48,7 @@ export function editExpr(title, initial = []) {
       catch (e) { status.textContent = tokens.length ? e.message : ''; status.className = 'expr-status bad'; }
     }
 
-    const TABS = { num: '🔢 Числа', var: '📦 Змінні і текст', cmp: '⚖️ Порівняння' };
+    const TABS = { num: 'Числа', var: 'Змінні і текст', cmp: 'Порівняння' };
     function renderTabs() {
       tabsBox.replaceChildren(...Object.entries(TABS).map(([k, label]) =>
         tile(label, () => { tab = k; renderTabs(); renderPad(); }, { cls: 'tab' + (tab === k ? ' active' : '') })));

@@ -4,6 +4,7 @@
 import { h } from './dom.js';
 import { store } from '../core/store.js';
 import { on, emit } from '../core/bus.js';
+import { iconElement } from './icons.js';
 
 let modalId = 0;
 const inertState = new Map();
@@ -63,7 +64,7 @@ export function openModal({ title = '', cls = '' } = {}) {
 
 export function tile(label, onDwell, { icon, sub, cls = '', repeat, always } = {}) {
   const el = h('button', { class: 'tile ' + cls, 'data-dwell': '' },
-    icon ? h('span', { class: 'tile-icon' }, icon) : null,
+    icon ? h('span', { class: 'tile-icon' }, iconElement(icon)) : null,
     h('span', { class: 'tile-label' }, label),
     sub ? h('span', { class: 'tile-sub' }, sub) : null);
   if (repeat) el.setAttribute('data-dwell-repeat', '');

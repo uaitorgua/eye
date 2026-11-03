@@ -12,13 +12,13 @@ export const CLICK_MODES = { dwell: 'затримка погляду', doublebli
 
 const STEPPERS = [
   { key: 'dwellMs', label: '⏱ Час погляду', step: 200, min: 400, max: 4000, fmt: v => (v / 1000).toFixed(1) + ' с' },
-  { key: 'longCloseMs', label: '😌 Довге закриття очей', step: 200, min: 600, max: 4000, fmt: v => (v / 1000).toFixed(1) + ' с' },
-  { key: 'readerScrollSpeed', label: '📖 Прокрутка книги', step: 50, min: 100, max: 1200, fmt: v => v + ' px/с' },
+  { key: 'longCloseMs', label: 'Довге закриття очей', step: 200, min: 600, max: 4000, fmt: v => (v / 1000).toFixed(1) + ' с' },
+  { key: 'readerScrollSpeed', label: 'Прокрутка книги', step: 50, min: 100, max: 1200, fmt: v => v + ' px/с' },
   { key: 'smoothing', label: '〰 Плавність', step: 0.05, min: 0, max: 0.95, fmt: v => Math.round(v * 100) + '%' },
-  { key: 'snap', label: '🧲 Магніт', step: 10, min: 0, max: 200, fmt: v => v + ' px' },
-  { key: 'breakReminderMin', label: '🌿 Нагадування про перерву', step: 5, min: 0, max: 60, fmt: v => v ? v + ' хв' : 'вимк' },
-  { key: 'zoom', label: '🔍 Масштаб схеми', step: 0.1, min: 0.5, max: 2, fmt: v => Math.round(v * 100) + '%' },
-  { key: 'runSpeedMs', label: '🐢 Пауза між кроками', step: 200, min: 200, max: 3000, fmt: v => (v / 1000).toFixed(1) + ' с' },
+  { key: 'snap', label: 'Магніт', step: 10, min: 0, max: 200, fmt: v => v + ' px' },
+  { key: 'breakReminderMin', label: 'Нагадування про перерву', step: 5, min: 0, max: 60, fmt: v => v ? v + ' хв' : 'вимк' },
+  { key: 'zoom', label: 'Масштаб схеми', step: 0.1, min: 0.5, max: 2, fmt: v => Math.round(v * 100) + '%' },
+  { key: 'runSpeedMs', label: 'Пауза між кроками', step: 200, min: 200, max: 3000, fmt: v => (v / 1000).toFixed(1) + ' с' },
 ];
 
 export function openSettings() {
@@ -54,7 +54,7 @@ export function openSettings() {
         updateSettings({ clickMode: next }); render();
       }, 'clickMode', { icon: '👁' }),
       control(s.voiceEnabled ? 'Озвучка: Увімк' : 'Озвучка: Вимк', () => { updateSettings({ voiceEnabled: !s.voiceEnabled }); render(); }, 'voiceEnabled', { icon: '🔊' }),
-      control(s.lang === 'uk' ? 'Мова: 🇺🇦 Укр' : 'Мова: 🇬🇧 Eng', () => { updateSettings({ lang: s.lang === 'uk' ? 'en' : 'uk' }); render(); }, 'lang', { icon: '🌐' }),
+      control(s.lang === 'uk' ? 'Мова: Укр' : 'Мова: Eng', () => { updateSettings({ lang: s.lang === 'uk' ? 'en' : 'uk' }); render(); }, 'lang', { icon: '🌐' }),
       control(s.sound ? 'Звук: так' : 'Звук: ні', () => { updateSettings({ sound: !s.sound }); render(); }, 'sound', { icon: '🔔' }),
       control(s.showDot ? 'Точка: так' : 'Точка: ні', () => { updateSettings({ showDot: !s.showDot }); render(); }, 'showDot', { icon: '📍' }),
       control(s.mode === 'webcam' ? 'Режим: камера' : 'Режим: миша', () => { m.close(); emit('choose-mode'); }, 'mode', { icon: '🔄' }),
