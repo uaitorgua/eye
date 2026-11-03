@@ -33,6 +33,7 @@ export function setGestureSuppressed(v) { gestureSuppressed = !!v; }
 let current = null, since = 0, locked = null;
 let pending = null, pendingSince = 0;
 let lastX = -1, lastY = -1;
+let mouseClickBlocked = false;
 let prevNow = 0, armed = null;
 
 export function fire(el) {
@@ -84,6 +85,7 @@ function setCurrent(el) {
 }
 
 onPointer((x, y) => {
+  if (mouseClickBlocked && (x !== lastX || y !== lastY)) mouseClickBlocked = false;
   lastX = x; lastY = y;
   if (dot) {
     dot.style.transform = `translate(${x}px, ${y}px)`;
@@ -95,14 +97,19 @@ function loop(now) {
   requestAnimationFrame(loop);
   const dt = now - prevNow; prevNow = now;
   if (lastX < 0) return;
+  if (store.settings.mode === 'mouse' && mouseClickBlocked) {
+    if (current) setCurrent(null);
+    if (ring) ring.style.setProperty('--p', 0);
+    return;
+  }
   if (eyes.closed) { since += dt; return; }      // очі закриті — нічого не рахуємо і не перемикаємо
   if (now < cooldownUntil || gestureSuppressed) { if (current) setCurrent(null); if (ring) ring.style.setProperty('--p', 0); return; }
   const t = findTarget(lastX, lastY);
-  if (t !== locked) locked = null;         // погляд пішов — ціль знову можна натиснути
   if (t !== current) {
     if (t !== pending) { pending = t; pendingSince = now; }
     if (now - pendingSince >= SWITCH_MS || !current) { setCurrent(t); pending = null; }
   } else pending = null;
+  if (current !== locked) locked = null;   // ціль змінилася — попередню можна натиснути знову
 
   let p = 0;
   if (current && current !== locked && current.isConnected) {
@@ -137,7 +144,10 @@ export function initDwell() {
   // Клік мишею (викладач) = миттєвий dwell.
   document.addEventListener('click', (e) => {
     const el = e.target.closest('[data-dwell]');
-    if (el && scope().contains(el) && !el.disabled) { e.preventDefault(); fire(el); }
+    if (el && scope().contains(el) && !el.disabled) {
+      mouseClickBlocked = true;
+      e.preventDefault(); fire(el);
+    }
   });
   
   // Жест очима = клік по цілі, яка була під курсором, коли очі закрилися.

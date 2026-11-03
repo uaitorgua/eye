@@ -1,48 +1,75 @@
-/* Читанка PDF: весь екран; зверху — тонкий рядок назви, посередині — сторінки, знизу — панель керування. */
-#reader-section { position: fixed; inset: 0; z-index: 3500; display: flex; flex-direction: column; background: #07090d; }
-
-.rd-top { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 6px 16px; height: 40px;
-  color: var(--dim); font-size: 18px; flex-shrink: 0; }
-#rd-title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-#rd-page { color: var(--text); font-weight: 600; white-space: nowrap; }
-
+/* PDF reader: the page remains neutral and controls use the same visual language as Home. */
+#reader-section { position: fixed; inset: 0; z-index: 3500; display: flex; flex-direction: column; background: #f7f4ec; color: #152440; }
+.rd-top { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 10px 20px; min-height: 52px; color: #152440; font-size: 18px; flex-shrink: 0; }
+#rd-title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 700; }
+#rd-page { color: #34435e; font-weight: 600; white-space: nowrap; }
 .rd-main { position: relative; flex: 1; min-height: 0; }
-#reader-view { position: absolute; inset: 0; overflow: auto; background: #3a3f4a; }
+#reader-view { position: absolute; inset: 0; overflow: auto; background: #dce3ed; }
 #reader-pages { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 16px 24px; min-width: min-content; }
-.pdf-page { position: relative; flex-shrink: 0; background: #fff; box-shadow: 0 2px 12px rgba(0,0,0,.5); }
+.pdf-page { position: relative; flex-shrink: 0; background: #fff; box-shadow: 0 2px 12px rgba(21,36,64,.2); }
 .pdf-page canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-
-/* підказки зон прокрутки: з'являються, коли погляд у зоні; яскравіють, коли рух починається */
 .rd-hint { position: absolute; pointer-events: none; opacity: 0; transition: opacity .15s; z-index: 2; }
-#rd-hint-top { left: 0; right: 0; top: 0; height: 16%; background: linear-gradient(rgba(90,169,255,.45), transparent); }
-#rd-hint-bottom { left: 0; right: 0; bottom: 0; height: 24%; background: linear-gradient(transparent, rgba(90,169,255,.45)); }
-#rd-hint-left { top: 0; bottom: 0; left: 0; width: 12%; background: linear-gradient(90deg, rgba(90,169,255,.45), transparent); }
-#rd-hint-right { top: 0; bottom: 0; right: 0; width: 12%; background: linear-gradient(270deg, rgba(90,169,255,.45), transparent); }
-
-.rd-bar { display: grid; grid-template-columns: repeat(9, 1fr); gap: 10px; padding: 10px; height: 130px; flex-shrink: 0;
-  background: var(--panel); border-top: 2px solid var(--border); }
-.rd-bar .tile { min-width: 0; min-height: 0; font-size: 18px; }
-.rd-bar .tile-icon { font-size: 32px; }
-#rd-zoom-out, #rd-zoom-in { border-color: var(--accent); }
-#rd-prev, #rd-next { border-color: var(--c-for); }
-#rd-exit { border-color: #555; }
-
-.library .grid { grid-auto-rows: minmax(120px, 1fr); }
-.tile.book { font-size: 22px; text-align: center; }
-.library-empty { text-align: center; font-size: 24px; color: var(--dim); margin: 0; }
-
-/* Вузькі екрани: 9 кнопок не вміщаються (≈31px). Основні (вихід, сторінки, пауза) завжди в панелі,
-   масштаб, бібліотека й прокрутка очима — на сторінці «Ще». */
+#rd-hint-top { left: 0; right: 0; top: 0; height: 16%; background: linear-gradient(rgba(24,86,216,.45), transparent); }
+#rd-hint-bottom { left: 0; right: 0; bottom: 0; height: 24%; background: linear-gradient(transparent, rgba(24,86,216,.45)); }
+#rd-hint-left { top: 0; bottom: 0; left: 0; width: 12%; background: linear-gradient(90deg, rgba(24,86,216,.45), transparent); }
+#rd-hint-right { top: 0; bottom: 0; right: 0; width: 12%; background: linear-gradient(270deg, rgba(24,86,216,.45), transparent); }
+.rd-bar { display: grid; grid-template-columns: repeat(9, 1fr); gap: 10px; padding: 10px; height: 120px; flex-shrink: 0; background: #f7f4ec; border-top: 1px solid #dedbd2; }
+.rd-bar .tile { min-width: 0; min-height: 0; padding: 8px; background: #fffdf8; border: 2px solid #ddd8cd; border-radius: 14px; color: #152440; font-size: 17px; }
+.rd-bar .tile-icon { font-size: 28px; }
+.rd-bar .tile-label { text-align: center; line-height: 1.1; }
+.rd-bar .tile:hover, .rd-bar .tile:focus-visible { border-color: #1856d8; }
+.rd-bar .tile.dwell-focus { outline-color: #1856d8; }
+.rd-bar [data-dwell]::after { background: #1856d8; }
+.rd-bar .tile.active { background: #dce8ff; border-color: #1856d8; }
+.rd-bar #rd-pause { background: #152440; color: #fff; border-color: #152440; }
+.rd-bar #rd-pause::after { background: #efb21d; }
 .rd-more { display: none; }
-@media (max-width: 700px) {
-  .rd-bar { grid-template-columns: 1fr 1fr 1fr 1fr 1.7fr; height: 104px; gap: 8px; padding: 8px; }
+
+/* The library always presents a finite page of large targets with gaze-accessible navigation. */
+#modal-layer > .modal.library { padding: clamp(12px, 2vw, 28px); background: #f7f4ec; color: #152440; }
+.library .modal-title { text-align: left; margin: 0 0 12px; font: 700 clamp(28px, 3vw, 46px)/1.1 Georgia, serif; }
+.library .modal-body { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.library-books { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.library .tile { min-width: 0; min-height: 0; padding: 12px; background: #fffdf8; color: #152440; border: 2px solid #dedbd2; border-radius: 14px; }
+.library .tile:hover, .library .tile:focus-visible { border-color: #1856d8; }
+.library .tile.dwell-focus { outline-color: #1856d8; }
+.library [data-dwell]::after { background: #1856d8; }
+.library .tile:disabled { opacity: .45; cursor: default; }
+.library .tile.book { text-align: left; align-items: flex-start; justify-content: center; padding: clamp(12px, 2vw, 24px); }
+.library .tile.book .tile-label { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; font-size: clamp(18px, 2.3vw, 30px); line-height: 1.16; }
+.library .tile-sub { margin-top: 8px; color: #535f73; font-size: clamp(14px, 1.4vw, 18px); }
+.library-empty { flex: 1; display: flex; align-items: center; max-width: 640px; margin: 0 auto; font-size: clamp(18px, 2vw, 26px); color: #46536c; text-align: center; }
+.library-instruction { margin: 0; font-size: 18px; color: #923b29; }
+.library-pages { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; height: clamp(58px, 10vh, 90px); flex-shrink: 0; }
+.library-pages .tile { height: 100%; font-size: clamp(16px, 1.7vw, 22px); }
+.library-page { min-width: 64px; font-size: 18px; font-weight: 700; text-align: center; }
+.library-tools { display: flex; gap: 12px; flex-shrink: 0; min-height: clamp(72px, 12vh, 100px); }
+.library-tools .tile { flex: 1; font-size: clamp(15px, 1.5vw, 20px); }
+.library-tools .tile-sub { margin: 3px 0 0; font-size: 13px; }
+.library-tools .library-exit { background: #152440; color: #fff; border-color: #152440; }
+.library-tools .library-exit::after { background: #efb21d; }
+@media (max-width: 1050px) {
+  .rd-bar { grid-template-columns: minmax(0, 1fr) repeat(3, minmax(0, .9fr)) minmax(0, 1.35fr); height: 106px; gap: 8px; padding: 8px; }
   .rd-bar .tile { padding: 4px; gap: 2px; }
-  .rd-bar .tile-label { font-size: 14px; line-height: 1.1; overflow-wrap: anywhere; text-align: center; }
-  .rd-bar .tile-icon { font-size: 28px; }
+  .rd-bar .tile-label { font-size: clamp(13px, 1.7vw, 17px); overflow-wrap: anywhere; }
+  .rd-bar .tile-icon { font-size: 26px; }
   .rd-more { display: flex; }
-  .rd-bar #rd-pause .tile-label { font-size: 13px; }
   .rd-bar #rd-library, .rd-bar #rd-zoom-out, .rd-bar #rd-fit, .rd-bar #rd-zoom-in, .rd-bar #rd-auto { display: none; }
-  .rd-bar.more { grid-template-columns: repeat(4, 1fr); grid-template-rows: 1fr 1fr; height: 200px; }
+  .rd-bar.more { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: 1fr 1fr; height: min(220px, 32vh); }
   .rd-bar.more #rd-library, .rd-bar.more #rd-zoom-out, .rd-bar.more #rd-fit, .rd-bar.more #rd-zoom-in, .rd-bar.more #rd-auto { display: flex; }
   .rd-bar.more #rd-exit, .rd-bar.more #rd-prev, .rd-bar.more #rd-next { display: none; }
 }
+@media (max-width: 600px) {
+  .rd-top { min-height: 44px; padding: 7px 12px; font-size: 15px; }
+  .rd-bar { height: 92px; gap: 6px; padding: 6px; }
+  .rd-bar .tile-icon { font-size: 22px; }
+  .rd-bar .tile-label { font-size: 13px; }
+  #modal-layer > .modal.library { padding: 12px; }
+  .library .modal-body { gap: 8px; }
+  .library-books { gap: 8px; }
+  .library-pages { height: 58px; gap: 8px; }
+  .library-tools { min-height: 76px; gap: 8px; }
+  .library-tools .tile { padding: 6px; }
+  .library .tile-sub { margin-top: 4px; font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) { .rd-hint { transition: none; } }

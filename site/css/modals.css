@@ -26,20 +26,78 @@
 .expr-side, .kb-side { width: 230px; display: flex; flex-direction: column; gap: var(--gap); }
 .expr-side .tile, .kb-side .tile { flex: 1; min-height: 80px; }
 
-/* налаштування: усе на одному екрані без прокрутки (очима прокрутити не можна).
-   Повзунки — 2 колонки, кожен: назва зверху, [−] значення [+]; висоти діляться порівну. */
-.settings .modal-title { margin-bottom: 8px; font-size: 28px; }
-.settings .modal-body { overflow: hidden; gap: var(--gap); }
-.steppers { flex: 3; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: var(--gap); }
-.stepper { min-height: 0; display: grid; grid-template-columns: 1fr 1.2fr 1fr; grid-template-rows: auto 1fr;
-  column-gap: 8px; padding: 6px 10px 10px; border-radius: 14px; background: var(--panel); }
-.stepper-label { grid-column: 1 / -1; font-size: 20px; color: var(--dim); }
-.stepper-value { align-self: center; text-align: center; font: 700 28px Consolas, monospace; }
-.settings .stepper .tile { min-height: 0; min-width: 0; }
-.settings .grid { flex: 2; min-height: 0; grid-auto-rows: 1fr; }
-.settings .grid .tile { min-height: 0; font-size: 19px; }
-body.paused .settings .settings-close { position: fixed; right: 12px; bottom: 12px;
-  width: min(220px, calc(100vw - 24px)); min-height: 80px; z-index: 1; }
+@media (max-width: 700px) {
+  #modal-layer > :is(.expr-editor, .keyboard, .numpad) { padding: 10px; gap: 6px; }
+  :is(.expr-editor, .keyboard, .numpad) .modal-title { margin: 0; font-size: 21px; line-height: 1.15; }
+  :is(.expr-editor, .keyboard, .numpad) .modal-body { gap: 6px; }
+  :is(.expr-editor, .keyboard, .numpad) .tile { min-width: 0; min-height: 0; padding: 3px; gap: 2px; border-radius: 9px; font-size: 16px; overflow-wrap: anywhere; }
+  :is(.expr-editor, .keyboard, .numpad) .tile-icon { font-size: 18px; }
+  :is(.expr-editor, .keyboard, .numpad) .tile-sub { font-size: 11px; line-height: 1; }
+  :is(.expr-editor, .keyboard, .numpad) .grid { min-width: 0; min-height: 0; gap: 4px; grid-auto-rows: minmax(0, 1fr); }
+  .expr-top { gap: 6px; min-width: 0; }
+  .expr-display, .kb-display { min-width: 0; min-height: 48px; max-height: 68px; overflow: auto; padding: 6px 10px; font-size: 22px; }
+  .expr-status { width: auto; flex: 0 1 38%; max-height: 68px; overflow: auto; font-size: 13px; line-height: 1.1; overflow-wrap: anywhere; }
+  .expr-tabs { gap: 4px; }
+  .expr-tabs .tile { min-height: 52px; font-size: 13px; }
+  .expr-main, .kb-main { flex-direction: column; gap: 6px; }
+  .expr-pad, .kb-keys { flex: 1; min-height: 0; min-width: 0; display: flex; }
+  .expr-pad .grid, .keyboard .grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .numpad .kb-main > .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .expr-side, .kb-side { width: 100%; flex: 0 0 104px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 4px; }
+  .expr-side { flex-basis: 54px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .numpad .kb-side { flex-basis: 64px; }
+}
+
+/* Choice pages keep every gaze target visible, including on narrow screens. */
+#modal-layer > .choice { padding: clamp(12px, 2.5vw, 28px); gap: 10px; }
+.choice .modal-title { font-size: clamp(22px, 4vw, 32px); margin: 0; overflow-wrap: anywhere; }
+.choice .modal-body, .choice .grid { min-width: 0; min-height: 0; }
+.choice .grid { grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); }
+.choice .grid .tile, .choice-nav .tile { min-width: 0; min-height: 0; overflow-wrap: anywhere; }
+.choice-nav { display: flex; flex: 0 0 clamp(64px, 12vh, 96px); align-items: stretch; gap: 8px; }
+.choice-nav .tile { flex: 1; font-size: clamp(16px, 2vw, 22px); }
+.choice-nav .tile:disabled { opacity: .35; }
+.choice-page-count { align-self: center; white-space: nowrap; font-size: 16px; }
+@media (max-width: 700px) {
+  .choice .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .choice .grid .tile { font-size: clamp(16px, 4.5vw, 22px); padding: 6px; }
+  .choice .grid .tile-icon { font-size: clamp(24px, 5vw, 32px); }
+  .choice .grid .tile-sub { font-size: clamp(13px, 3.5vw, 15px); }
+  .choice-nav { gap: 5px; }
+  .choice-nav .tile { font-size: 15px; padding: 5px; }
+  .choice-page-count { font-size: 13px; }
+}
+
+/* Settings are paged so gaze targets remain available without scrolling. */
+#modal-layer > .settings { background: #f7f4ec; color: #152440; padding: clamp(12px, 2.5vw, 28px); gap: 10px; }
+.settings .modal-title { margin: 0; font: 700 clamp(26px, 4vw, 42px)/1.1 Georgia, serif; text-align: left; }
+.settings .modal-body { overflow: hidden; gap: 12px; }
+.settings .steppers, .settings .settings-toggles { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 12px; }
+.settings .stepper { min-width: 0; min-height: 0; display: grid; grid-template-columns: minmax(64px, 1fr) minmax(65px, 1fr) minmax(64px, 1fr); grid-template-rows: auto 1fr; gap: 6px 8px; padding: 12px; border: 1px solid #ddd9ce; border-radius: 16px; background: #fffdf8; }
+.settings .stepper-label { grid-column: 1 / -1; font-size: clamp(16px, 2vw, 21px); font-weight: 700; line-height: 1.15; color: #152440; }
+.settings .stepper-value { align-self: center; text-align: center; font-size: clamp(18px, 2.2vw, 28px); font-weight: 700; font-variant-numeric: tabular-nums; }
+#modal-layer > .settings .tile { min-width: 0; min-height: 0; border: 2px solid #c9d3e3; border-radius: 14px; background: #e8eef8; color: #152440; font-size: clamp(16px, 2vw, 23px); }
+#modal-layer > .settings .tile:focus-visible { outline: 4px solid #1856d8; outline-offset: 2px; }
+#modal-layer > .settings .tile.dwell-focus { outline: 4px solid #1856d8; }
+#modal-layer > .settings [data-dwell]::after { background: #1856d8; }
+#modal-layer > .settings .tile:disabled { opacity: .35; cursor: default; }
+#modal-layer > .settings .settings-close { background: #152440; color: #fff; border-color: #152440; }
+#modal-layer > .settings .settings-close::after { background: #efb21d; }
+.settings-nav { flex: 0 0 clamp(66px, 12vh, 96px); display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) minmax(0, 1.2fr); gap: 8px; align-items: stretch; }
+.settings-page-count { align-self: center; white-space: nowrap; font-size: 16px; font-weight: 700; }
+#modal-layer > .modal .modal-resume { flex: 0 0 68px; align-self: flex-end; min-height: 68px; min-width: 180px; padding: 8px 20px; border-color: #efb21d; background: #ffedb2; color: #152440; }
+@media (max-width: 700px) {
+  .settings .steppers { grid-template-columns: 1fr; grid-template-rows: repeat(4, 1fr); gap: 8px; }
+  .settings .stepper { grid-template-columns: minmax(60px, .8fr) minmax(55px, 1fr) minmax(60px, .8fr); grid-template-rows: auto minmax(0, 1fr); padding: 6px 10px; gap: 4px 8px; }
+  .settings .stepper-label { font-size: 15px; }
+  .settings .settings-toggles { gap: 8px; }
+  #modal-layer > .settings .tile { font-size: 16px; padding: 4px; }
+  #modal-layer > .settings .tile-icon { font-size: 22px; }
+  .settings-nav { flex-basis: 68px; gap: 5px; }
+  .settings-page-count { font-size: 13px; }
+  #modal-layer > .settings .settings-nav .tile { font-size: 14px; }
+  #modal-layer > .modal .modal-resume { flex-basis: 56px; min-height: 56px; min-width: 150px; }
+}
 
 /* перевірка очей */
 .eye-state { font-size: 40px; text-align: center; }

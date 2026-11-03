@@ -3,7 +3,7 @@
 // знизу — панель великих кнопок: масштаб, гортання сторінок, прокрутка очима вкл/викл, пауза.
 // Додавання PDF — викладач мишею (кнопка або перетягування файлу на екран).
 import { h, toast } from '../ui/dom.js';
-import { openModal, tile, grid, choose } from '../ui/modal.js';
+import { openModal, tile, choose } from '../ui/modal.js';
 import { store, updateSettings } from '../core/store.js';
 import { emit, on } from '../core/bus.js';
 import { onPointer } from '../gaze/pointer.js';
@@ -15,7 +15,7 @@ import * as books from './book-store.js';
 const LAST_BOOK = 'eyeflow.lastBook';
 const $ = (id) => document.getElementById(id);
 
-let view, section, currentId = null, gx = -1, gy = -1, saveTimer;
+let view, section, currentId = null, gx = -1, gy = -1, saveTimer, libraryModal;
 const scroller = createEdgeScroller();
 
 // standalone: окрема сторінка reader.html — «Вихід» стає «Меню» (калібрування, налаштування, перехід у EyeFlow).
@@ -59,10 +59,12 @@ export function initReader({ standalone: alone = false } = {}) {
 
 export async function openReader() {
   section.classList.remove('hidden');
-  const last = localStorage.getItem(LAST_BOOK);
   if (currentId) return;
-  if (last && await books.getBook(last)) openBook(last);
-  else openLibrary();
+  try {
+    const last = localStorage.getItem(LAST_BOOK);
+    if (last && await books.getBook(last)) return openBook(last);
+  } catch { /* The library displays the storage error and recovery options. */ }
+  openLibrary();
 }
 
 async function openStandaloneMenu() {
@@ -82,6 +84,7 @@ export function closeReader() {
   $('reader-section').querySelector('.rd-bar').classList.remove('more');
   $('rd-more').querySelector('.tile-label').textContent = 'Ще';
   section.classList.add('hidden');
+  if (!standalone && location.hash === '#/books') history.replaceState(null, '', '#/');
 }
 
 // ---------- прокрутка поглядом ----------
@@ -126,7 +129,8 @@ function onViewChange() {
 }
 
 function saveNow() {
-  if (currentId && view.doc) books.saveProgress({ id: currentId, ...view.position(), zoom: view.zoom });
+  if (currentId && view.doc) books.saveProgress({ id: currentId, ...view.position(), zoom: view.zoom })
+    .catch(() => toast('Не вдалося зберегти місце читання. Перевірте пам’ять браузера.', 6000));
 }
 
 function renderBar() {
@@ -138,22 +142,27 @@ function renderBar() {
 
 // ---------- книги ----------
 async function openBook(id) {
-  const book = await books.getBook(id);
-  if (!book) return toast('Книгу не знайдено');
-  saveNow();
-  $('rd-title').textContent = book.name;
-  $('rd-page').textContent = 'Відкриваю…';
   try {
+    const book = await books.getBook(id);
+    if (!book) throw new Error('Book not found');
+    saveNow();
+    $('rd-title').textContent = book.name;
+    $('rd-page').textContent = 'Відкриваю…';
     const pages = await view.open(await book.data.arrayBuffer());
     currentId = id;
-    localStorage.setItem(LAST_BOOK, id);
-    books.setBookPages(id, pages);
-    const p = await books.getProgress(id);
+    try { localStorage.setItem(LAST_BOOK, id); }
+    catch { toast('Книгу відкрито, але браузер не запам’ятає її для наступного разу.', 6000); }
+    books.setBookPages(id, pages).catch(() => {});
+    const p = await books.getProgress(id).catch(() => { toast('Не вдалося відновити місце читання.', 6000); return null; });
     if (p) { view.applyZoom(p.zoom || 1); view.setPosition(p); }
     onViewChange();
   } catch (e) {
     console.error(e);
-    toast('Не вдалося відкрити PDF: ' + e.message, 6000);
+    currentId = null;
+    $('rd-title').textContent = 'Книги';
+    $('rd-page').textContent = '';
+    toast('Не вдалося відкрити PDF. Перевірте файл або оберіть іншу книгу.', 6000);
+    openLibrary();
   }
 }
 
@@ -161,10 +170,23 @@ async function addFiles(fileList) {
   const pdfs = [...fileList].filter(f => f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
   if (!pdfs.length) return toast('Потрібен файл PDF');
   let lastId;
-  for (const f of pdfs) lastId = await books.addBook(f);
+  try {
+    for (const f of pdfs) lastId = await books.addBook(f);
+  } catch (e) {
+    console.error(e);
+    toast('Не вдалося додати всі книги. Перевірте вільне місце в браузері та спробуйте ще раз.', 6000);
+    if (libraryModal) { closeLibrary(); openLibrary(); }
+    return;
+  }
   toast(`Додано книг: ${pdfs.length} ✓`);
-  document.querySelectorAll('#modal-layer > .modal.library').forEach(m => m.remove());
+  closeLibrary();
   openBook(lastId);
+}
+
+function closeLibrary() {
+  if (!libraryModal) return;
+  libraryModal.close();
+  libraryModal = null;
 }
 
 function pickFiles() {
@@ -177,26 +199,66 @@ function pickFiles() {
 }
 
 async function openLibrary() {
-  const list = await books.listBooks();
-  const progress = Object.fromEntries(await Promise.all(list.map(async b => [b.id, await books.getProgress(b.id)])));
-  const m = openModal({ title: '📚 Мої книги', cls: 'library' });
-  const tiles = list.slice(0, 10).map(b => {
-    const p = progress[b.id];
-    const sub = b.pages ? `стор. ${p?.page || 1} з ${b.pages}` : 'ще не відкривали';
-    return tile(b.name, () => { m.close(); openBook(b.id); }, { icon: b.id === currentId ? '📖' : '📘', sub, cls: 'book' });
-  });
-  tiles.push(
-    tile('Додати PDF', pickFiles, { icon: '➕', sub: 'дорослий: клік мишею або перетягніть файл' }),
-    ...(list.length ? [tile('Видалити книгу', async () => {
-      const id = await choose('Яку книгу видалити?', list.map(b => ({ label: b.name, value: b.id, icon: '📘' })), { cols: 3 });
-      if (!id || !await choose('Точно видалити книгу?', [{ label: 'Так, видалити', icon: '🗑', value: true, cls: 'danger' }], { cols: 2 })) return;
-      await books.deleteBook(id);
-      if (id === currentId) { view.close(); currentId = null; localStorage.removeItem(LAST_BOOK); }
-      m.close(); openLibrary();
-    }, { icon: '🗑', cls: 'danger' })] : []),
-    tile(currentId ? 'Назад до книги' : (standalone ? 'Закрити' : 'Вийти'), () => { m.close(); if (!currentId && !standalone) closeReader(); }, { icon: '✕', cls: 'cancel' }));
-  if (!list.length) m.body.appendChild(h('p', { class: 'library-empty' }, 'Бібліотека порожня. Дорослий додає PDF-підручники кнопкою «Додати PDF» або перетягує файли на цей екран.'));
-  m.body.appendChild(grid(4, ...tiles));
+  if (libraryModal) return;
+  const m = libraryModal = openModal({ title: 'Мої книги', cls: 'library' });
+  let list = [], progress = {}, page = 0, deleting = false;
+  const pageSize = 4;
+  const exit = () => { closeLibrary(); if (!currentId && !standalone) closeReader(); };
+  const refresh = async () => {
+    try {
+      list = await books.listBooks();
+      progress = Object.fromEntries(await Promise.all(list.map(async b => [b.id, await books.getProgress(b.id)])));
+      page = Math.min(page, Math.max(0, Math.ceil(list.length / pageSize) - 1));
+      render();
+    } catch (e) {
+      console.error(e);
+      m.body.replaceChildren(h('p', { class: 'library-empty', role: 'alert' }, 'Не вдалося відкрити бібліотеку. Перевірте доступ до пам’яті браузера та спробуйте ще раз.'),
+        h('div', { class: 'library-tools' }, tile('Спробувати ще', refresh), tile('Вийти', exit, { always: true })));
+    }
+  };
+  const render = () => {
+    const focused = m.body.contains?.(document.activeElement);
+    const focusBook = document.activeElement?.getAttribute?.('data-book-id');
+    const focusClass = ['library-prev', 'library-next', 'library-delete', 'library-add', 'library-exit', 'book']
+      .find(cls => document.activeElement?.classList?.contains(cls));
+    const count = Math.max(1, Math.ceil(list.length / pageSize));
+    const items = list.slice(page * pageSize, (page + 1) * pageSize).map(b => {
+      const p = progress[b.id];
+      const sub = deleting ? 'Обрати для видалення' : b.pages ? `Стор. ${p?.page || 1} з ${b.pages}` : 'Відкрити';
+      const bookTile = tile(b.name, async () => {
+        if (!deleting) { closeLibrary(); return openBook(b.id); }
+        if (!await choose('Видалити «' + b.name + '»?', [{ label: 'Так, видалити', value: true, cls: 'danger' }], { cols: 2 })) return;
+        try {
+          await books.deleteBook(b.id);
+          if (b.id === currentId) { view.close(); currentId = null; try { localStorage.removeItem(LAST_BOOK); } catch { /* storage unavailable */ } }
+          await refresh();
+        } catch (e) { console.error(e); toast('Не вдалося видалити книгу. Спробуйте ще раз.', 6000); }
+      }, { sub, cls: 'book' });
+      bookTile.setAttribute('data-book-id', b.id);
+      return bookTile;
+    });
+    const content = list.length ? h('div', { class: 'library-books' }, ...items) :
+      h('p', { class: 'library-empty' }, 'Тут поки немає книг. Дорослий може додати PDF за допомогою кнопки нижче.');
+    const previous = tile('Назад', () => { page--; render(); }, { cls: 'library-prev' });
+    const next = tile('Далі', () => { page++; render(); }, { cls: 'library-next' });
+    previous.disabled = page === 0;
+    next.disabled = page >= count - 1;
+    const pagination = h('nav', { class: 'library-pages', 'aria-label': 'Сторінки бібліотеки' }, previous,
+      h('span', { class: 'library-page', 'aria-live': 'polite' }, `${page + 1} / ${count}`), next);
+    const tools = h('div', { class: 'library-tools' },
+      tile('Додати PDF', pickFiles, { sub: 'Для дорослого', cls: 'library-add' }),
+      ...(list.length ? [tile(deleting ? 'Скасувати видалення' : 'Видалити книгу', () => { deleting = !deleting; render(); }, { cls: 'library-delete' })] : []),
+      tile(currentId ? 'До книги' : (standalone ? 'Закрити' : 'Меню'), exit, { cls: 'library-exit', always: true }));
+    m.body.replaceChildren(...(deleting ? [h('p', { class: 'library-instruction' }, 'Оберіть книгу для видалення.')] : []), content, pagination, tools);
+    if (focused) {
+      const sameBook = focusBook && [...m.body.querySelectorAll('.book')].find(node => node.getAttribute('data-book-id') === focusBook);
+      const same = sameBook || (focusClass && m.body.querySelector(`.${focusClass}:not(:disabled)`));
+      (same || m.body.querySelector('.book, .library-exit, .library-add'))?.focus();
+    }
+  };
+  m.body.append(h('p', { class: 'library-empty', role: 'status' }, 'Завантажуємо бібліотеку…'),
+    h('div', { class: 'library-tools' }, tile('Вийти', exit, { always: true })));
   m.el.addEventListener('dragover', (e) => e.preventDefault());
   m.el.addEventListener('drop', (e) => { e.preventDefault(); addFiles(e.dataTransfer.files); });
+  await refresh();
 }

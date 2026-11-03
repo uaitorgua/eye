@@ -67,3 +67,30 @@
   .relax-bar .tile { min-width: 0; flex: 1; padding: 14px 8px; }
   .relax-bar .tile .tile-label { font-size: .85rem; }
 }
+
+/* App shell styling; the dark rest state and moving target remain intentionally distinct. */
+#relax-section { background: #f7f4ec; color: #152440; }
+#relax-section.dark { background: #05070c; color: #eaf2ff; }
+#relax-progress { color: #535f73; }
+#relax-section.dark #relax-progress { color: #cfe0f7; }
+#relax-hint { color: #354762; }
+#relax-section.dark #relax-hint { color: #cfe0f7; }
+.relax-note { color: #535f73; }
+#relax-section.dark .relax-note { color: #cfe0f7; }
+#relax-ring { background: conic-gradient(#1856d8 calc(var(--p) * 360deg), #dce4f2 0); }
+#relax-ring::after { background: #f7f4ec; }
+#relax-timer { color: #152440; }
+#relax-section.dark #relax-ring::after { background: #05070c; }
+#relax-section.dark #relax-timer { color: #eaf2ff; }
+#relax-section .relax-bar .tile { background: #fffdf8; border: 2px solid #b7becb; color: #152440; }
+#relax-section .relax-bar .tile.active { background: #dce9ff; border-color: #1856d8; }
+#relax-section .relax-bar .tile.dwell-focus, #relax-section .relax-bar .tile:focus-visible { outline: 4px solid #1856d8; outline-offset: -4px; }
+#relax-section .relax-bar .tile::before, #relax-section .relax-bar .tile::after { background: #1856d8; }
+@media (max-width: 620px) {
+  .relax-top { padding: 12px 12px 4px; }
+  .relax-stage { margin: 4px 12px; }
+  #relax-hint { padding: 0 12px; font-size: 16px; line-height: 1.35; }
+  .relax-note { padding: 0 12px 4px; font-size: 14px; }
+  .relax-bar { gap: 6px; padding: 6px 8px 10px; }
+}
+@media (prefers-reduced-motion: reduce) { #relax-section { transition: none; } }
