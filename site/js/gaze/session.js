@@ -5,7 +5,7 @@
 import { store, updateSettings } from '../core/store.js';
 import { on, emit } from '../core/bus.js';
 import { initDwell } from './dwell.js';
-import { startWebcam, calibrate, cam, cameraPermission, SITE_BLOCKED_HELP } from './webcam.js';
+import { startWebcam, calibrate, cam, cameraPermission, hasCalibration, SITE_BLOCKED_HELP } from './webcam.js';
 import { choose } from '../ui/modal.js';
 import { toast } from '../ui/dom.js';
 import { onDrift, resetDrift } from './drift.js';
@@ -49,6 +49,12 @@ async function runCalibration() {
   if (!cam.ready && !((await prepareCameraPermission()) && (await startWebcam()))) return;
   const r = await calibrate();
 
+  if (r.cancelled) {
+    toast(hasCalibration()
+      ? 'Калібрування скасовано. Працює попереднє налаштування погляду.'
+      : 'Калібрування скасовано. Без нього погляд може влучати неточно — запустіть його в Налаштуваннях → «Калібрувати».', 7000);
+    return;
+  }
   if (!r.ok) {
     const retry = await choose(r.error || 'Калібрування не вдалося', [
       { label: 'Спробувати ще', icon: '🎯', value: true },
@@ -135,7 +141,15 @@ async function applyMode() {
     if (els.calibBtn) els.calibBtn.hidden = false;
     if (!cam.ready && !(await prepareCameraPermission())) return;
     if (!cam.ready && !(await startWebcam())) return;
-    if (store.settings.autoCalibrate) runCalibration();
+    if (store.settings.autoCalibrate) {
+      // A saved calibration is reused on reload; recalibrating is offered, not forced.
+      if (!hasCalibration()) return runCalibration();
+      const again = await choose('Калібрувати знову?', [
+        { label: 'Продовжити', icon: '✓', value: false, cls: 'ok', sub: 'Попереднє калібрування' },
+        { label: 'Калібрувати', icon: '🎯', value: true, sub: 'Приблизно хвилина' },
+      ], { cols: 2, cancel: false, subtitle: 'Якщо точка погляду влучає добре, можна одразу продовжити.' });
+      if (again) runCalibration();
+    }
     else toast('Камера працює. Якщо точка погляду «гуляє» — натисніть 🎯', 4000);
   } else {
     if (els.calibBtn) els.calibBtn.hidden = true;

@@ -47,8 +47,11 @@ export function fire(el, gaze = true) {
   el.dispatchEvent(new CustomEvent('dwell', { bubbles: true }));
 }
 
-// Область пошуку: верхня модалка → повноекранний шар [data-layer] (Тетріс) → весь документ.
+// Область пошуку: блокувальний оверлей [data-gaze-block] → верхня модалка → повноекранний шар [data-layer] (Тетріс) → весь документ.
 function scope() {
+  // A blocking overlay (calibration) owns the screen: nothing below it may be activated.
+  const blockers = document.querySelectorAll('[data-gaze-block]');
+  if (blockers.length) return blockers[blockers.length - 1];
   const modals = document.querySelectorAll('#modal-layer > .modal');
   if (modals.length) return modals[modals.length - 1];
   const layers = [...document.querySelectorAll('[data-layer]:not(.hidden)')];

@@ -59,6 +59,7 @@ export function openSettings() {
       control(s.showDot ? 'Точка: так' : 'Точка: ні', () => { updateSettings({ showDot: !s.showDot }); render(); }, 'showDot', { icon: '📍' }),
       control(s.mode === 'webcam' ? 'Режим: камера' : 'Режим: миша', () => { m.close(); emit('choose-mode'); }, 'mode', { icon: '🔄' }),
       ...(s.mode === 'webcam' ? [
+        control('Калібрувати', () => { m.close(); emit('calibrate'); }, 'calibrate', { icon: '🎯' }),
         control('Камера', () => { m.close(); emit('choose-camera'); }, 'camera', { icon: '📷' }),
         control('Перевірка очей', () => openEyeTest(), 'eyeTest', { icon: '👁' }),
       ] : []),
