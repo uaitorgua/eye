@@ -18,6 +18,7 @@
 import { beep, setGestureSuppressed } from '../gaze/dwell.js';
 import { cue } from '../core/cue.js';
 import { store } from '../core/store.js';
+import { iconElement } from '../ui/icons.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -157,7 +158,7 @@ export function initRelax() {
     const b = $('relax-pause');
     b.classList.toggle('active', paused);
     b.querySelector('.tile-label').textContent = paused ? 'Далі' : 'Пауза';
-    b.querySelector('.tile-icon').textContent = paused ? '▶' : '⏸';
+    b.querySelector('.tile-icon').replaceChildren(iconElement(paused ? '▶' : '⏸'));
   });
   // «Вихід» прив’язує portal/home.js (як в інших підсистем).
 }

@@ -6,11 +6,11 @@ const S = (o) => ({ id: newId(), ...o });
 
 export const EXAMPLES = [
   {
-    title: '👋 Привіт',
+    title: 'Привіт',
     build: () => ({ main: [S({ kind: 'output', expr: [str('Привіт, світ!')] })] }),
   },
   {
-    title: '➕ Сума двох чисел',
+    title: 'Сума двох чисел',
     build: () => ({ main: [
       S({ kind: 'input', name: 'a' }),
       S({ kind: 'input', name: 'b' }),
@@ -19,13 +19,13 @@ export const EXAMPLES = [
     ] }),
   },
   {
-    title: '🔢 Рахуємо до 10',
+    title: 'Рахуємо до 10',
     build: () => ({ main: [
       S({ kind: 'for', name: 'i', from: [num(1)], to: [num(10)], body: [S({ kind: 'output', expr: [vr('i')] })] }),
     ] }),
   },
   {
-    title: '⚖️ Парне чи непарне',
+    title: 'Парне чи непарне',
     build: () => ({ main: [
       S({ kind: 'input', name: 'n' }),
       S({ kind: 'if', cond: [vr('n'), op('mod'), num(2), op('=='), num(0)],
@@ -34,7 +34,7 @@ export const EXAMPLES = [
     ] }),
   },
   {
-    title: '🔁 Зворотний відлік',
+    title: 'Зворотний відлік',
     build: () => ({ main: [
       S({ kind: 'assign', name: 'x', expr: [num(5)] }),
       S({ kind: 'while', cond: [vr('x'), op('>'), num(0)], body: [

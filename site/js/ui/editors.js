@@ -48,7 +48,7 @@ export function editExpr(title, initial = []) {
       catch (e) { status.textContent = tokens.length ? e.message : ''; status.className = 'expr-status bad'; }
     }
 
-    const TABS = { num: '🔢 Числа', var: '📦 Змінні і текст', cmp: '⚖️ Порівняння' };
+    const TABS = { num: 'Числа', var: 'Змінні і текст', cmp: 'Порівняння' };
     function renderTabs() {
       tabsBox.replaceChildren(...Object.entries(TABS).map(([k, label]) =>
         tile(label, () => { tab = k; renderTabs(); renderPad(); }, { cls: 'tab' + (tab === k ? ' active' : '') })));
@@ -79,7 +79,7 @@ export function editExpr(title, initial = []) {
 
     side.append(
       tile('Стерти', () => set(backspace(tokens)), { icon: '⌫', repeat: true }),
-      tile('Очистити', () => set([]), { icon: '🧹' }),
+      tile('Скинути', () => set([]), { icon: '🧹' }),
       tile('Готово', () => {
         try { parse(tokens); done(tokens); } catch (e) { toast(e.message); }
       }, { icon: '✓', cls: 'ok' }),
@@ -122,7 +122,7 @@ export function keyboard(title, initial = '') {
 
     // Викладач може друкувати на звичайній клавіатурі.
     function onKey(e) {
-      if (!m.el.isConnected) return;
+      if (!m.el.isConnected || m.el.inert) return;
       if (e.key === 'Enter') done(text);
       else if (e.key === 'Escape') done(null);
       else if (e.key === 'Backspace') set(text.slice(0, -1));
@@ -157,7 +157,7 @@ export function numpad(title) {
       tile('Готово', finish, { icon: '✓', cls: 'ok' }));
     m.body.append(display, h('div', { class: 'kb-main' }, grid(3, ...keys), side));
     function onKey(e) {
-      if (!m.el.isConnected) return;
+      if (!m.el.isConnected || m.el.inert) return;
       if (e.key === 'Enter') finish();
       else if (e.key === 'Backspace') set(text.slice(0, -1));
       else if (/^[0-9.,-]$/.test(e.key)) set(text + (e.key === ',' ? '.' : e.key));
@@ -179,7 +179,7 @@ export function chooseBlockKind() {
 export async function editStmt(stmt) {
   switch (stmt.kind) {
     case 'output': {
-      const e = await editExpr('💬 Що показати на екрані?', stmt.expr);
+      const e = await editExpr('Що показати на екрані?', stmt.expr);
       if (!e) return false; stmt.expr = e; return true;
     }
     case 'input': {

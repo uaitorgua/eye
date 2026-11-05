@@ -5,7 +5,7 @@
 import { store, updateSettings } from '../core/store.js';
 import { on, emit } from '../core/bus.js';
 import { initDwell } from './dwell.js';
-import { startWebcam, calibrate, cam, cameraPermission, SITE_BLOCKED_HELP } from './webcam.js';
+import { startWebcam, calibrate, cam, cameraPermission, hasCalibration, SITE_BLOCKED_HELP } from './webcam.js';
 import { choose } from '../ui/modal.js';
 import { toast } from '../ui/dom.js';
 import { onDrift, resetDrift } from './drift.js';
@@ -22,9 +22,8 @@ export function initGazeSession(elements = {}) {
   });
   // Калібрування «пливе» з часом. Коли систематичне зміщення стає помітним,
   // делікатно пропонуємо перекалібруватися (не частіше ніж раз на 5 хвилин).
-  onDrift(({ px, deg }) => {
-    const size = deg != null ? deg.toFixed(1) + '°' : px + ' px';
-    toast('🎯 Точність зсунулася приблизно на ' + size + '. Варто перекалібрувати.', 9000);
+  onDrift(() => {
+    toast('Можливо, погляд змістився. Якщо керувати стало складніше, спробуйте перекалібрувати.', 9000);
   });
 
   on('choose-mode', chooseMode);
@@ -50,6 +49,12 @@ async function runCalibration() {
   if (!cam.ready && !((await prepareCameraPermission()) && (await startWebcam()))) return;
   const r = await calibrate();
 
+  if (r.cancelled) {
+    toast(hasCalibration()
+      ? 'Калібрування скасовано. Працює попереднє налаштування погляду.'
+      : 'Калібрування скасовано. Без нього погляд може влучати неточно — запустіть його в Налаштуваннях → «Калібрувати».', 7000);
+    return;
+  }
   if (!r.ok) {
     const retry = await choose(r.error || 'Калібрування не вдалося', [
       { label: 'Спробувати ще', icon: '🎯', value: true },
@@ -82,10 +87,10 @@ async function runCalibration() {
 }
 
 async function chooseMode() {
-  const mode = await choose('Як керувати? (обирає дорослий)', [
+  const mode = await choose('Як керувати?', [
     { label: 'Очима через вебкамеру', icon: '📷', value: 'webcam', sub: 'WebGazer, потрібне калібрування' },
     { label: 'Миша або трекер очей', icon: '🖱', value: 'mouse', sub: 'Tobii / Windows Eye Control рухають курсор' },
-  ], { cols: 2, cancel: false });
+  ], { cols: 2, cancel: false, subtitle: 'Обирає дорослий. Змінити можна будь-коли в налаштуваннях.' });
   updateSettings({ mode });
   applyMode();
 }
@@ -136,10 +141,18 @@ async function applyMode() {
     if (els.calibBtn) els.calibBtn.hidden = false;
     if (!cam.ready && !(await prepareCameraPermission())) return;
     if (!cam.ready && !(await startWebcam())) return;
-    if (store.settings.autoCalibrate) runCalibration();
+    if (store.settings.autoCalibrate) {
+      // A saved calibration is reused on reload; recalibrating is offered, not forced.
+      if (!hasCalibration()) return runCalibration();
+      const again = await choose('Калібрувати знову?', [
+        { label: 'Продовжити', icon: '✓', value: false, cls: 'ok', sub: 'Попереднє калібрування' },
+        { label: 'Калібрувати', icon: '🎯', value: true, sub: 'Приблизно хвилина' },
+      ], { cols: 2, cancel: false, subtitle: 'Якщо точка погляду влучає добре, можна одразу продовжити.' });
+      if (again) runCalibration();
+    }
     else toast('Камера працює. Якщо точка погляду «гуляє» — натисніть 🎯', 4000);
   } else {
     if (els.calibBtn) els.calibBtn.hidden = true;
-    if (els.statusEl) { els.statusEl.textContent = 'Режим: миша / трекер'; els.statusEl.className = 'ok'; }
+    emit('cam-status', { text: 'Режим: миша / трекер', ok: true });
   }
 }

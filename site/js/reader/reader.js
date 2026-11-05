@@ -3,7 +3,7 @@
 // знизу — панель великих кнопок: масштаб, гортання сторінок, прокрутка очима вкл/викл, пауза.
 // Додавання PDF — викладач мишею (кнопка або перетягування файлу на екран).
 import { h, toast } from '../ui/dom.js';
-import { openModal, tile, grid, choose } from '../ui/modal.js';
+import { openModal, tile, choose } from '../ui/modal.js';
 import { store, updateSettings } from '../core/store.js';
 import { emit, on } from '../core/bus.js';
 import { onPointer } from '../gaze/pointer.js';
@@ -15,7 +15,7 @@ import * as books from './book-store.js';
 const LAST_BOOK = 'eyeflow.lastBook';
 const $ = (id) => document.getElementById(id);
 
-let view, section, currentId = null, gx = -1, gy = -1, saveTimer;
+let view, section, currentId = null, gx = -1, gy = -1, saveTimer, libraryModal;
 const scroller = createEdgeScroller();
 
 // standalone: окрема сторінка reader.html — «Вихід» стає «Меню» (калібрування, налаштування, перехід у EyeFlow).
@@ -38,6 +38,11 @@ export function initReader({ standalone: alone = false } = {}) {
   bind('rd-next', () => view.goToPage(view.position().page + 1));
   bind('rd-auto', () => updateSettings({ readerAutoScroll: !store.settings.readerAutoScroll }));
   bind('rd-pause', () => emit('toggle-pause'));
+  // Вузькі екрани: основні кнопки в панелі, решта — на сторінці «Ще».
+  bind('rd-more', () => {
+    const more = $('reader-section').querySelector('.rd-bar').classList.toggle('more');
+    $('rd-more').querySelector('.tile-label').textContent = more ? 'Готово' : 'Ще';
+  });
   on('settings-changed', renderBar);
   on('pause-changed', renderBar);
 
@@ -54,10 +59,12 @@ export function initReader({ standalone: alone = false } = {}) {
 
 export async function openReader() {
   section.classList.remove('hidden');
-  const last = localStorage.getItem(LAST_BOOK);
   if (currentId) return;
-  if (last && await books.getBook(last)) openBook(last);
-  else openLibrary();
+  try {
+    const last = localStorage.getItem(LAST_BOOK);
+    if (last && await books.getBook(last)) return openBook(last);
+  } catch { /* The library displays the storage error and recovery options. */ }
+  openLibrary();
 }
 
 async function openStandaloneMenu() {
@@ -74,7 +81,10 @@ async function openStandaloneMenu() {
 export function closeReader() {
   saveNow();
   setDotDim(false);           // повертаємо яскраву точку за межами читанки
+  $('reader-section').querySelector('.rd-bar').classList.remove('more');
+  $('rd-more').querySelector('.tile-label').textContent = 'Ще';
   section.classList.add('hidden');
+  if (!standalone && location.hash === '#/books') history.replaceState(null, '', '#/');
 }
 
 // ---------- прокрутка поглядом ----------
@@ -119,34 +129,40 @@ function onViewChange() {
 }
 
 function saveNow() {
-  if (currentId && view.doc) books.saveProgress({ id: currentId, ...view.position(), zoom: view.zoom });
+  if (currentId && view.doc) books.saveProgress({ id: currentId, ...view.position(), zoom: view.zoom })
+    .catch(() => toast('Не вдалося зберегти місце читання. Перевірте пам’ять браузера.', 6000));
 }
 
 function renderBar() {
   const s = store.settings;
-  $('rd-auto').querySelector('.tile-label').textContent = s.readerAutoScroll ? 'Прокрутка очима: так' : 'Прокрутка очима: ні';
+  $('rd-auto').querySelector('.tile-label').textContent = s.readerAutoScroll ? 'Прокрутка: так' : 'Прокрутка: ні';
   $('rd-auto').classList.toggle('active', s.readerAutoScroll);
   $('rd-pause').querySelector('.tile-label').textContent = store.paused ? 'Продовжити' : 'Пауза';
 }
 
 // ---------- книги ----------
 async function openBook(id) {
-  const book = await books.getBook(id);
-  if (!book) return toast('Книгу не знайдено');
-  saveNow();
-  $('rd-title').textContent = book.name;
-  $('rd-page').textContent = 'Відкриваю…';
   try {
+    const book = await books.getBook(id);
+    if (!book) throw new Error('Book not found');
+    saveNow();
+    $('rd-title').textContent = book.name;
+    $('rd-page').textContent = 'Відкриваю…';
     const pages = await view.open(await book.data.arrayBuffer());
     currentId = id;
-    localStorage.setItem(LAST_BOOK, id);
-    books.setBookPages(id, pages);
-    const p = await books.getProgress(id);
+    try { localStorage.setItem(LAST_BOOK, id); }
+    catch { toast('Книгу відкрито, але браузер не запам’ятає її для наступного разу.', 6000); }
+    books.setBookPages(id, pages).catch(() => {});
+    const p = await books.getProgress(id).catch(() => { toast('Не вдалося відновити місце читання.', 6000); return null; });
     if (p) { view.applyZoom(p.zoom || 1); view.setPosition(p); }
     onViewChange();
   } catch (e) {
     console.error(e);
-    toast('Не вдалося відкрити PDF: ' + e.message, 6000);
+    currentId = null;
+    $('rd-title').textContent = 'Книги';
+    $('rd-page').textContent = '';
+    toast('Не вдалося відкрити PDF. Перевірте файл або оберіть іншу книгу.', 6000);
+    openLibrary();
   }
 }
 
@@ -154,10 +170,23 @@ async function addFiles(fileList) {
   const pdfs = [...fileList].filter(f => f.type === 'application/pdf' || /\.pdf$/i.test(f.name));
   if (!pdfs.length) return toast('Потрібен файл PDF');
   let lastId;
-  for (const f of pdfs) lastId = await books.addBook(f);
+  try {
+    for (const f of pdfs) lastId = await books.addBook(f);
+  } catch (e) {
+    console.error(e);
+    toast('Не вдалося додати всі книги. Перевірте вільне місце в браузері та спробуйте ще раз.', 6000);
+    if (libraryModal) { closeLibrary(); openLibrary(); }
+    return;
+  }
   toast(`Додано книг: ${pdfs.length} ✓`);
-  document.querySelectorAll('#modal-layer > .modal.library').forEach(m => m.remove());
+  closeLibrary();
   openBook(lastId);
+}
+
+function closeLibrary() {
+  if (!libraryModal) return;
+  libraryModal.close();
+  libraryModal = null;
 }
 
 function pickFiles() {
@@ -169,27 +198,101 @@ function pickFiles() {
   input.click();          // відкриється лише після справжнього кліку мишею (обмеження браузера)
 }
 
+// Empty library: a calm illustration instead of a blank page, with the next step spelled out.
+function emptyShelf() {
+  const art = h('span', { class: 'library-empty-art', 'aria-hidden': 'true' });
+  art.innerHTML = '<svg viewBox="0 0 300 220"><path d="M27 64c43-13 83-1 123 21 40-22 80-34 123-21v128c-43-13-83-1-123 21-40-22-80-34-123-21z" fill="#0d3686" transform="translate(0 4)"/>'
+    + '<path d="M30 55c42-12 80 0 120 22v124c-40-22-78-34-120-22z" fill="#fffaf0" stroke="#ddd4bf" stroke-width="3"/>'
+    + '<path d="M150 77c40-22 78-34 120-22v124c-42-12-80 0-120 22z" fill="#f2ead7" stroke="#ddd4bf" stroke-width="3"/>'
+    + '<path d="M150 77v124" stroke="#c8bda2" stroke-width="4"/>'
+    + '<path d="M161 198v18l14-9 14 9v-31" fill="#efb21d"/>'
+    + '<path d="M75 32 63 18m48 7-2-20m36 24 9-16" stroke="#efb21d" stroke-width="6" stroke-linecap="round"/></svg>';
+  return h('div', { class: 'library-empty-state' }, art,
+    h('div', { class: 'library-empty-copy' },
+      h('p', { class: 'library-empty-title' }, 'Полиця поки порожня'),
+      h('p', { class: 'library-empty' }, 'Спробуй коротку пробну книгу. Дорослий може додати власні PDF.')));
+}
+
 async function openLibrary() {
-  const list = await books.listBooks();
-  const progress = Object.fromEntries(await Promise.all(list.map(async b => [b.id, await books.getProgress(b.id)])));
-  const m = openModal({ title: '📚 Мої книги', cls: 'library' });
-  const tiles = list.slice(0, 10).map(b => {
-    const p = progress[b.id];
-    const sub = b.pages ? `стор. ${p?.page || 1} з ${b.pages}` : 'ще не відкривали';
-    return tile(b.name, () => { m.close(); openBook(b.id); }, { icon: b.id === currentId ? '📖' : '📘', sub, cls: 'book' });
-  });
-  tiles.push(
-    tile('Додати PDF', pickFiles, { icon: '➕', sub: 'дорослий: клік мишею або перетягніть файл' }),
-    ...(list.length ? [tile('Видалити книгу', async () => {
-      const id = await choose('Яку книгу видалити?', list.map(b => ({ label: b.name, value: b.id, icon: '📘' })), { cols: 3 });
-      if (!id || !await choose('Точно видалити книгу?', [{ label: 'Так, видалити', icon: '🗑', value: true, cls: 'danger' }], { cols: 2 })) return;
-      await books.deleteBook(id);
-      if (id === currentId) { view.close(); currentId = null; localStorage.removeItem(LAST_BOOK); }
-      m.close(); openLibrary();
-    }, { icon: '🗑', cls: 'danger' })] : []),
-    tile(currentId ? 'Назад до книги' : (standalone ? 'Закрити' : 'Вийти'), () => { m.close(); if (!currentId && !standalone) closeReader(); }, { icon: '✕', cls: 'cancel' }));
-  if (!list.length) m.body.appendChild(h('p', { class: 'library-empty' }, 'Бібліотека порожня. Дорослий додає PDF-підручники кнопкою «Додати PDF» або перетягує файли на цей екран.'));
-  m.body.appendChild(grid(4, ...tiles));
+  if (libraryModal) return;
+  const m = libraryModal = openModal({ title: 'Мої книги', cls: 'library' });
+  let list = [], progress = {}, page = 0, deleting = false, loadingSample = false;
+  const pageSize = 4;
+  const exit = () => { closeLibrary(); if (!currentId && !standalone) closeReader(); };
+  const refresh = async () => {
+    try {
+      list = await books.listBooks();
+      progress = Object.fromEntries(await Promise.all(list.map(async b => [b.id, await books.getProgress(b.id)])));
+      page = Math.min(page, Math.max(0, Math.ceil(list.length / pageSize) - 1));
+      render();
+    } catch (e) {
+      console.error(e);
+      m.body.replaceChildren(h('p', { class: 'library-empty', role: 'alert' }, 'Не вдалося відкрити бібліотеку. Перевірте доступ до пам’яті браузера та спробуйте ще раз.'),
+        h('div', { class: 'library-tools' }, tile('Спробувати ще', refresh), tile('Вийти', exit, { always: true })));
+    }
+  };
+  const render = () => {
+    const focused = m.body.contains?.(document.activeElement);
+    const focusBook = document.activeElement?.getAttribute?.('data-book-id');
+    const focusClass = ['library-prev', 'library-next', 'library-delete', 'library-add', 'library-sample', 'library-exit', 'book']
+      .find(cls => document.activeElement?.classList?.contains(cls));
+    const count = Math.max(1, Math.ceil(list.length / pageSize));
+    const items = list.slice(page * pageSize, (page + 1) * pageSize).map(b => {
+      const p = progress[b.id];
+      const sub = deleting ? 'Обрати для видалення' : b.pages ? `Стор. ${p?.page || 1} з ${b.pages}` : 'Відкрити';
+      const bookTile = tile(b.name, async () => {
+        if (!deleting) { closeLibrary(); return openBook(b.id); }
+        if (!await choose('Видалити «' + b.name + '»?', [{ label: 'Так, видалити', value: true, cls: 'danger' }], { cols: 2 })) return;
+        try {
+          await books.deleteBook(b.id);
+          if (b.id === currentId) { view.close(); currentId = null; try { localStorage.removeItem(LAST_BOOK); } catch { /* storage unavailable */ } }
+          await refresh();
+        } catch (e) { console.error(e); toast('Не вдалося видалити книгу. Спробуйте ще раз.', 6000); }
+      }, { sub, cls: 'book' });
+      bookTile.setAttribute('data-book-id', b.id);
+      return bookTile;
+    });
+    const content = list.length ? h('div', { class: 'library-books' }, ...items) : emptyShelf();
+    const previous = tile('Назад', () => { page--; render(); }, { cls: 'library-prev' });
+    const next = tile('Далі', () => { page++; render(); }, { cls: 'library-next' });
+    previous.disabled = page === 0;
+    next.disabled = page >= count - 1;
+    const pagination = h('nav', { class: 'library-pages', 'aria-label': 'Сторінки бібліотеки' }, previous,
+      h('span', { class: 'library-page', 'aria-live': 'polite' }, `${page + 1} / ${count}`), next);
+    const tryReading = tile(loadingSample ? 'Відкриваємо…' : 'Спробувати читання', async () => {
+      if (loadingSample) return;
+      loadingSample = true; render();
+      try {
+        const response = await fetch('assets/books/first-reading.pdf');
+        if (!response.ok) throw new Error('Sample unavailable');
+        const file = new File([await response.blob()], 'Перше читання.pdf', { type: 'application/pdf' });
+        if (libraryModal !== m) return;
+        await addFiles([file]);
+      } catch (error) {
+        console.error(error);
+        toast('Не вдалося відкрити зразок. Спробуйте ще раз або додайте власний PDF.', 6000);
+      } finally {
+        loadingSample = false;
+        if (libraryModal === m) render();
+      }
+    }, { cls: 'library-sample', sub: 'Коротка пробна книга' });
+    tryReading.disabled = loadingSample;
+    const tools = h('div', { class: 'library-tools' },
+      ...(!list.length ? [tryReading] : []),
+      tile('Додати PDF', pickFiles, { sub: 'Для дорослого', cls: 'library-add' }),
+      ...(list.length ? [tile(deleting ? 'Скасувати видалення' : 'Видалити книгу', () => { deleting = !deleting; render(); }, { cls: 'library-delete' })] : []),
+      tile(currentId ? 'До книги' : (standalone ? 'Закрити' : 'Меню'), exit, { cls: 'library-exit', always: true }));
+    m.body.replaceChildren(...(deleting ? [h('p', { class: 'library-instruction' }, 'Оберіть книгу для видалення.')] : []), content,
+      ...(count > 1 ? [pagination] : []), tools);
+    if (focused) {
+      const sameBook = focusBook && [...m.body.querySelectorAll('.book')].find(node => node.getAttribute('data-book-id') === focusBook);
+      const same = sameBook || (focusClass && m.body.querySelector(`.${focusClass}:not(:disabled)`));
+      (same || m.body.querySelector('.book, .library-exit, .library-add'))?.focus();
+    }
+  };
+  m.body.append(h('p', { class: 'library-empty', role: 'status' }, 'Завантажуємо бібліотеку…'),
+    h('div', { class: 'library-tools' }, tile('Вийти', exit, { always: true })));
   m.el.addEventListener('dragover', (e) => e.preventDefault());
   m.el.addEventListener('drop', (e) => { e.preventDefault(); addFiles(e.dataTransfer.files); });
+  await refresh();
 }
