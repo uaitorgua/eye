@@ -1,46 +1,46 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>UAIT Eye — керування комп’ютером очима</title>
-<link rel="stylesheet" href="css/base.css">
-<link rel="stylesheet" href="css/home.css">
-<link rel="stylesheet" href="css/flowchart.css">
-<link rel="stylesheet" href="css/modals.css">
-<link rel="stylesheet" href="css/tetris.css">
-<link rel="stylesheet" href="css/reader.css">
-<link rel="stylesheet" href="css/browser.css">
-<link rel="stylesheet" href="css/relax.css">
+<link rel="stylesheet" href="css/base.css?v=20261105b">
+<link rel="stylesheet" href="css/home.css?v=20261105b">
+<link rel="stylesheet" href="css/flowchart.css?v=20261105b">
+<link rel="stylesheet" href="css/modals.css?v=20261105b">
+<link rel="stylesheet" href="css/tetris.css?v=20261105b">
+<link rel="stylesheet" href="css/reader.css?v=20261105b">
+<link rel="stylesheet" href="css/browser.css?v=20261105b">
+<link rel="stylesheet" href="css/relax.css?v=20261105b">
 <script src="lib/webgazer.js"></script>
 </head>
 <body>
 <header id="toolbar">
-  <button class="tile tool home" id="btn-home" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/house.svg)"></span></span><span class="tile-label">Меню</span></button>
-  <button class="tile tool pause" id="btn-pause" data-dwell data-dwell-always><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/eye.svg)"></span></span><span class="tile-label">Пауза</span></button>
-  <button class="tile tool run" id="btn-run" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/play.svg)"></span></span><span class="tile-label">Запуск</span></button>
-  <button class="tile tool" id="btn-step" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/footprints.svg)"></span></span><span class="tile-label">Крок</span></button>
-  <button class="tile tool stop" id="btn-stop" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/square.svg)"></span></span><span class="tile-label">Стоп</span></button>
+  <button class="tile tool home" id="btn-home" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/house.svg)"></span></span><span class="tile-label">Меню</span></button>
+  <button class="tile tool pause" id="btn-pause" data-dwell data-dwell-always><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/eye.svg)"></span></span><span class="tile-label">Пауза</span></button>
+  <button class="tile tool run" id="btn-run" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/play.svg)"></span></span><span class="tile-label">Запуск</span></button>
+  <button class="tile tool" id="btn-step" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/footprints.svg)"></span></span><span class="tile-label">Крок</span></button>
+  <button class="tile tool stop" id="btn-stop" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/square.svg)"></span></span><span class="tile-label">Стоп</span></button>
   <div class="spacer"><div id="cam-status">…</div></div>
-  <button class="tile tool" id="btn-file" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/folder.svg)"></span></span><span class="tile-label">Файл</span></button>
-  <button class="tile tool" id="btn-calib" data-dwell hidden><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/target.svg)"></span></span><span class="tile-label">Калібрувати</span></button>
-  <button class="tile tool" id="btn-settings" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/settings.svg)"></span></span><span class="tile-label">Налаштування</span></button>
+  <button class="tile tool" id="btn-file" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/folder.svg)"></span></span><span class="tile-label">Файл</span></button>
+  <button class="tile tool" id="btn-calib" data-dwell hidden><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/target.svg)"></span></span><span class="tile-label">Калібрувати</span></button>
+  <button class="tile tool" id="btn-settings" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/settings.svg)"></span></span><span class="tile-label">Налаштування</span></button>
 </header>
 
 <main id="main">
   <section id="chart-panel">
     <div id="chart-wrap"><div id="chart"></div></div>
     <nav id="scroller">
-      <button class="tile" id="scroll-up" data-dwell data-dwell-repeat>▲</button>
-      <button class="tile" id="scroll-left" data-dwell data-dwell-repeat>◀</button>
-      <button class="tile" id="scroll-right" data-dwell data-dwell-repeat>▶</button>
-      <button class="tile" id="scroll-down" data-dwell data-dwell-repeat>▼</button>
+      <button class="tile" id="scroll-up" aria-label="Прокрутити вгору" data-dwell data-dwell-repeat><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/arrow-up.svg)"></span></button>
+      <button class="tile" id="scroll-left" aria-label="Прокрутити ліворуч" data-dwell data-dwell-repeat><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/arrow-left.svg)"></span></button>
+      <button class="tile" id="scroll-right" aria-label="Прокрутити праворуч" data-dwell data-dwell-repeat><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/arrow-right.svg)"></span></button>
+      <button class="tile" id="scroll-down" aria-label="Прокрутити вниз" data-dwell data-dwell-repeat><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/arrow-down.svg)"></span></button>
     </nav>
   </section>
   <aside id="side">
-    <h3>💬 Екран програми</h3>
+    <h3>Екран програми</h3>
     <div id="console-out"></div>
-    <h3>📦 Змінні</h3>
+    <h3>Змінні</h3>
     <div id="vars"></div>
   </aside>
 </main>
@@ -82,25 +82,26 @@
 
 <!-- Тетріс: відпочинок для очей. Повний екран, лише великі зони погляду. -->
 <section id="tetris-section" class="hidden" data-layer>
-  <button class="tile tz tz-left" id="tz-left" data-dwell data-dwell-repeat><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/chevron-left.svg)"></span></span></button>
+  <button class="tile tz tz-left" id="tz-left" aria-label="Рухати фігуру ліворуч" data-dwell data-dwell-repeat><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/arrow-left.svg)"></span></span></button>
   <div class="tz-center">
     <div class="tetris-info">
       <span>Рахунок <b id="tetris-score">0</b></span><span>Лінії <b id="tetris-lines">0</b></span><span>Рівень <b id="tetris-level">1</b></span>
       <canvas id="tetris-next-canvas" width="120" height="120"></canvas>
     </div>
-    <button class="tz tz-rotate" id="tz-rotate" data-dwell title="Повернути"><canvas id="tetris-canvas" width="300" height="600"></canvas></button>
-    <button class="tile tz tz-drop" id="tz-drop" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/arrow-down.svg)"></span></span><span class="tile-label">Впустити</span></button>
+    <p class="tetris-hint">Погляд на поле — повернути фігуру</p>
+    <button class="tz tz-rotate" id="tz-rotate" data-dwell aria-label="Повернути фігуру" title="Повернути"><canvas id="tetris-canvas" width="300" height="600"></canvas></button>
+    <button class="tile tz tz-drop" id="tz-drop" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/arrow-down.svg)"></span></span><span class="tile-label">Впустити</span></button>
   </div>
   <div class="tz-right-col">
-    <button class="tile tz tz-exit" id="btn-tetris-exit" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/log-out.svg)"></span></span><span class="tile-label">Вихід</span></button>
-    <button class="tile tz tz-right" id="tz-right" data-dwell data-dwell-repeat><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/play.svg)"></span></span></button>
+    <button class="tile tz tz-exit" id="btn-tetris-exit" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/log-out.svg)"></span></span><span class="tile-label">Вихід</span></button>
+    <button class="tile tz tz-right" id="tz-right" aria-label="Рухати фігуру праворуч" data-dwell data-dwell-repeat><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/arrow-right.svg)"></span></span></button>
   </div>
   <div class="tetris-overlay hidden" id="tetris-overlay" data-layer>
     <div class="tetris-overlay-title">Гарна гра! 🙂</div>
     <div class="tetris-overlay-score">Рахунок: <span id="tetris-final-score">0</span></div>
     <div class="tetris-overlay-actions">
-      <button class="tile" id="btn-tetris-restart" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/refresh-cw.svg)"></span></span><span class="tile-label">Знову</span></button>
-      <button class="tile" id="btn-tetris-overlay-exit" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/log-out.svg)"></span></span><span class="tile-label">Вихід</span></button>
+      <button class="tile" id="btn-tetris-restart" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/refresh-cw.svg)"></span></span><span class="tile-label">Знову</span></button>
+      <button class="tile" id="btn-tetris-overlay-exit" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/log-out.svg)"></span></span><span class="tile-label">Вихід</span></button>
     </div>
   </div>
 </section>
@@ -114,16 +115,16 @@
     <div class="rd-hint" id="rd-hint-left"></div><div class="rd-hint" id="rd-hint-right"></div>
   </div>
   <nav class="rd-bar">
-    <button class="tile" id="rd-exit" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/arrow-left.svg)"></span></span><span class="tile-label">Вихід</span></button>
-    <button class="tile" id="rd-library" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/library.svg)"></span></span><span class="tile-label">Книги</span></button>
-    <button class="tile" id="rd-zoom-out" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/zoom-out.svg)"></span></span><span class="tile-label">Менше</span></button>
-    <button class="tile" id="rd-fit" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/move-horizontal.svg)"></span></span><span class="tile-label">По ширині</span></button>
-    <button class="tile" id="rd-zoom-in" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/zoom-in.svg)"></span></span><span class="tile-label">Більше</span></button>
-    <button class="tile" id="rd-prev" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/chevrons-up.svg)"></span></span><span class="tile-label">Назад</span></button>
-    <button class="tile" id="rd-next" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/chevrons-down.svg)"></span></span><span class="tile-label">Далі</span></button>
-    <button class="tile" id="rd-auto" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/eye.svg)"></span></span><span class="tile-label">Прокрутка</span></button>
-    <button class="tile rd-more" id="rd-more" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/ellipsis.svg)"></span></span><span class="tile-label">Ще</span></button>
-    <button class="tile" id="rd-pause" data-dwell data-dwell-always><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/pause.svg)"></span></span><span class="tile-label">Пауза</span></button>
+    <button class="tile" id="rd-exit" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/arrow-left.svg)"></span></span><span class="tile-label">Вихід</span></button>
+    <button class="tile" id="rd-library" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/library.svg)"></span></span><span class="tile-label">Книги</span></button>
+    <button class="tile" id="rd-zoom-out" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/zoom-out.svg)"></span></span><span class="tile-label">Менше</span></button>
+    <button class="tile" id="rd-fit" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/move-horizontal.svg)"></span></span><span class="tile-label">По ширині</span></button>
+    <button class="tile" id="rd-zoom-in" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/zoom-in.svg)"></span></span><span class="tile-label">Більше</span></button>
+    <button class="tile" id="rd-prev" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/chevrons-up.svg)"></span></span><span class="tile-label">Назад</span></button>
+    <button class="tile" id="rd-next" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/chevrons-down.svg)"></span></span><span class="tile-label">Далі</span></button>
+    <button class="tile" id="rd-auto" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/eye.svg)"></span></span><span class="tile-label">Прокрутка</span></button>
+    <button class="tile rd-more" id="rd-more" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/ellipsis.svg)"></span></span><span class="tile-label">Ще</span></button>
+    <button class="tile" id="rd-pause" data-dwell data-dwell-always><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/pause.svg)"></span></span><span class="tile-label">Пауза</span></button>
   </nav>
 </section>
 
@@ -135,14 +136,14 @@
     <div class="rd-hint br-hint-top" id="br-hint-top"></div><div class="rd-hint br-hint-bottom" id="br-hint-bottom"></div>
   </div>
   <nav class="br-bar">
-    <button class="tile" id="br-exit" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/house.svg)"></span></span><span class="tile-label">Меню</span></button>
-    <button class="tile" id="br-back" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/chevron-left.svg)"></span></span><span class="tile-label">Назад</span></button>
-    <button class="tile" id="br-sites" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/bookmark.svg)"></span></span><span class="tile-label">Сайти</span></button>
-    <button class="tile br-links" id="br-links" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/link.svg)"></span></span><span class="tile-label">Посилання</span></button>
-    <button class="tile" id="br-up" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/chevrons-up.svg)"></span></span><span class="tile-label">Вище</span></button>
-    <button class="tile" id="br-down" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/chevrons-down.svg)"></span></span><span class="tile-label">Нижче</span></button>
-    <button class="tile" id="br-font" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/case-sensitive.svg)"></span></span><span class="tile-label">Шрифт</span></button>
-    <button class="tile" id="br-pause" data-dwell data-dwell-always><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/pause.svg)"></span></span><span class="tile-label">Пауза</span></button>
+    <button class="tile" id="br-exit" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/house.svg)"></span></span><span class="tile-label">Меню</span></button>
+    <button class="tile" id="br-back" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/chevron-left.svg)"></span></span><span class="tile-label">Назад</span></button>
+    <button class="tile" id="br-sites" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/bookmark.svg)"></span></span><span class="tile-label">Сайти</span></button>
+    <button class="tile br-links" id="br-links" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/link.svg)"></span></span><span class="tile-label">Посилання</span></button>
+    <button class="tile" id="br-up" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/chevrons-up.svg)"></span></span><span class="tile-label">Вище</span></button>
+    <button class="tile" id="br-down" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/chevrons-down.svg)"></span></span><span class="tile-label">Нижче</span></button>
+    <button class="tile" id="br-font" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/case-sensitive.svg)"></span></span><span class="tile-label">Шрифт</span></button>
+    <button class="tile" id="br-pause" data-dwell data-dwell-always><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/pause.svg)"></span></span><span class="tile-label">Пауза</span></button>
   </nav>
 </section>
 
@@ -159,10 +160,10 @@
   <div id="relax-hint"></div>
   <div class="relax-note">Роби вправи у зручному для тебе темпі. Під час вправ із заплющуванням керування поглядом тимчасово вимкнено, щоб кліпання не натискало кнопки.</div>
   <nav class="relax-bar">
-    <button class="tile" id="btn-relax-exit" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/log-out.svg)"></span></span><span class="tile-label">Вихід</span></button>
-    <button class="tile" id="relax-prev" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/skip-back.svg)"></span></span><span class="tile-label">Назад</span></button>
-    <button class="tile" id="relax-pause" data-dwell data-dwell-always><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/pause.svg)"></span></span><span class="tile-label">Пауза</span></button>
-    <button class="tile" id="relax-next" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(assets/icons/skip-forward.svg)"></span></span><span class="tile-label">Далі</span></button>
+    <button class="tile" id="btn-relax-exit" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/log-out.svg)"></span></span><span class="tile-label">Вихід</span></button>
+    <button class="tile" id="relax-prev" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/skip-back.svg)"></span></span><span class="tile-label">Назад</span></button>
+    <button class="tile" id="relax-pause" data-dwell data-dwell-always><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/pause.svg)"></span></span><span class="tile-label">Пауза</span></button>
+    <button class="tile" id="relax-next" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/skip-forward.svg)"></span></span><span class="tile-label">Далі</span></button>
   </nav>
 </section>
 

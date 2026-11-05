@@ -36,12 +36,12 @@ let lastX = -1, lastY = -1;
 let mouseClickBlocked = false;
 let prevNow = 0, armed = null;
 
-export function fire(el) {
+export function fire(el, gaze = true) {
   el.classList.add('dwell-fired');
   setTimeout(() => el.classList.remove('dwell-fired'), 300);
   if (store.settings.sound) beep();
   // Людина щойно дивилась саме на цю ціль — беремо це як орієнтир для виявлення дрейфу.
-  if (store.settings.mode === 'webcam') {
+  if (gaze && store.settings.mode === 'webcam') {
     try { noteActivation(lastX, lastY, el.getBoundingClientRect()); } catch { /* ok */ }
   }
   el.dispatchEvent(new CustomEvent('dwell', { bubbles: true }));
@@ -146,7 +146,7 @@ export function initDwell() {
     const el = e.target.closest('[data-dwell]');
     if (el && scope().contains(el) && !el.disabled) {
       mouseClickBlocked = true;
-      e.preventDefault(); fire(el);
+      e.preventDefault(); fire(el, false);
     }
   });
   

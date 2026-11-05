@@ -41,7 +41,9 @@
   .expr-tabs .tile { min-height: 52px; font-size: 13px; }
   .expr-main, .kb-main { flex-direction: column; gap: 6px; }
   .expr-pad, .kb-keys { flex: 1; min-height: 0; min-width: 0; display: flex; }
-  .expr-pad .grid, .keyboard .grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .expr-pad .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .expr-pad .tile { font-size: 22px; }
+  .keyboard .grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
   .numpad .kb-main > .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .expr-side, .kb-side { width: 100%; flex: 0 0 104px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 4px; }
   .expr-side { flex-basis: 54px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -107,6 +109,17 @@
 }
 
 /* перевірка очей */
+#modal-layer > .settings .stepper .tile { font-size: 36px; }
+#modal-layer > .settings .settings-nav .tile { font-size: 20px; }
+#modal-layer > :is(.expr-editor, .keyboard, .numpad) { background: #f7f4ec; color: #152440; }
+:is(.expr-editor, .keyboard, .numpad) .tile { background: #fffdf8; color: #152440; border-color: #c9d3e3; }
+:is(.expr-editor, .keyboard, .numpad) :is(.expr-display, .kb-display) { background: #e8eef8; color: #152440; border-color: #c9d3e3; }
+:is(.expr-editor, .keyboard, .numpad) .tile.active { background: #1856d8; color: #fff; border-color: #1856d8; }
+:is(.expr-editor, .keyboard, .numpad) .tile.ok { background: #152440; color: #fff; border-color: #152440; }
+:is(.expr-editor, .keyboard, .numpad) .expr-status.ok { color: #21664b; }
+:is(.expr-editor, .keyboard, .numpad) .expr-status.bad { color: #a12c30; }
+.tile-label { line-height: 1.2; }
+
 .eye-state { font-size: 40px; text-align: center; }
 .eye-bar { position: relative; height: 70px; border-radius: 14px; background: #0a0c10; border: 3px solid var(--border); overflow: hidden; }
 .eye-fill { height: 100%; width: 0; background: var(--ok); transition: width .05s linear; }

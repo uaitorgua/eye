@@ -201,7 +201,7 @@ function pickFiles() {
 async function openLibrary() {
   if (libraryModal) return;
   const m = libraryModal = openModal({ title: 'Мої книги', cls: 'library' });
-  let list = [], progress = {}, page = 0, deleting = false;
+  let list = [], progress = {}, page = 0, deleting = false, loadingSample = false;
   const pageSize = 4;
   const exit = () => { closeLibrary(); if (!currentId && !standalone) closeReader(); };
   const refresh = async () => {
@@ -219,7 +219,7 @@ async function openLibrary() {
   const render = () => {
     const focused = m.body.contains?.(document.activeElement);
     const focusBook = document.activeElement?.getAttribute?.('data-book-id');
-    const focusClass = ['library-prev', 'library-next', 'library-delete', 'library-add', 'library-exit', 'book']
+    const focusClass = ['library-prev', 'library-next', 'library-delete', 'library-add', 'library-sample', 'library-exit', 'book']
       .find(cls => document.activeElement?.classList?.contains(cls));
     const count = Math.max(1, Math.ceil(list.length / pageSize));
     const items = list.slice(page * pageSize, (page + 1) * pageSize).map(b => {
@@ -245,7 +245,26 @@ async function openLibrary() {
     next.disabled = page >= count - 1;
     const pagination = h('nav', { class: 'library-pages', 'aria-label': 'Сторінки бібліотеки' }, previous,
       h('span', { class: 'library-page', 'aria-live': 'polite' }, `${page + 1} / ${count}`), next);
+    const tryReading = tile(loadingSample ? 'Відкриваємо…' : 'Спробувати читання', async () => {
+      if (loadingSample) return;
+      loadingSample = true; render();
+      try {
+        const response = await fetch('assets/books/first-reading.pdf');
+        if (!response.ok) throw new Error('Sample unavailable');
+        const file = new File([await response.blob()], 'Перше читання.pdf', { type: 'application/pdf' });
+        if (libraryModal !== m) return;
+        await addFiles([file]);
+      } catch (error) {
+        console.error(error);
+        toast('Не вдалося відкрити зразок. Спробуйте ще раз або додайте власний PDF.', 6000);
+      } finally {
+        loadingSample = false;
+        if (libraryModal === m) render();
+      }
+    }, { cls: 'library-sample', sub: 'Коротка пробна книга' });
+    tryReading.disabled = loadingSample;
     const tools = h('div', { class: 'library-tools' },
+      ...(!list.length ? [tryReading] : []),
       tile('Додати PDF', pickFiles, { sub: 'Для дорослого', cls: 'library-add' }),
       ...(list.length ? [tile(deleting ? 'Скасувати видалення' : 'Видалити книгу', () => { deleting = !deleting; render(); }, { cls: 'library-delete' })] : []),
       tile(currentId ? 'До книги' : (standalone ? 'Закрити' : 'Меню'), exit, { cls: 'library-exit', always: true }));

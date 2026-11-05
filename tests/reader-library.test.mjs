@@ -122,3 +122,30 @@ test('library pages reach older books, delete safely, and open through the modal
   assert.equal(closes, 2);
   assert.equal(storage.get('eyeflow.lastBook'), 'b9');
 });
+
+test('empty library offers a bundled reading sample with retry and duplicate-load protection', async () => {
+  allBooks.length = 0;
+  elements.get('rd-library').dispatchEvent(new Event('dwell'));
+  await tick();
+  assert.ok(button('Спробувати читання'));
+  let requests = 0;
+  globalThis.fetch = async url => { requests++; assert.equal(url, 'assets/books/first-reading.pdf'); return { ok: false }; };
+  const oldError = console.error; console.error = () => {};
+  try {
+    button('Спробувати читання').dispatchEvent(new Event('dwell'));
+    await tick();
+  } finally { console.error = oldError; }
+  assert.match(lastToast, /Не вдалося відкрити зразок/);
+  assert.ok(button('Спробувати читання'));
+  let finish;
+  globalThis.fetch = () => { requests++; return new Promise(resolve => { finish = resolve; }); };
+  const sampleButton = button('Спробувати читання');
+  sampleButton.dispatchEvent(new Event('dwell'));
+  sampleButton.dispatchEvent(new Event('dwell'));
+  assert.equal(button('Відкриваємо…').disabled, true);
+  assert.equal(requests, 2);
+  finish({ ok: true, blob: async () => new Blob(['%PDF-sample'], { type: 'application/pdf' }) });
+  await tick(); await tick();
+  assert.equal(allBooks.length, 1);
+  assert.equal(storage.get('eyeflow.lastBook'), 'new');
+});

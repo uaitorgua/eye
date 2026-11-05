@@ -33,7 +33,8 @@ function move(x, y) { document.dispatch('mousemove', {clientX:x, clientY:y}); }
 function click(target) { document.dispatch('click', {target, preventDefault(){}}); }
 
 const {store} = await import('../site/js/core/store.js');
-const {initDwell} = await import('../site/js/gaze/dwell.js');
+const {initDwell, fire} = await import('../site/js/gaze/dwell.js');
+const {bias, resetDrift} = await import('../site/js/gaze/drift.js');
 
 test('mouse click waits for real movement before another dwell, webcam remains active', () => {
   store.settings.mode = 'mouse';
@@ -59,6 +60,11 @@ test('mouse click waits for real movement before another dwell, webcam remains a
   click(opener);
   tick(8400); tick(8700); tick(9700);
   assert.equal(count, 2, 'webcam-mode gaze remains enabled after an assistant click');
+  resetDrift();
+  for (let i = 0; i < 8; i++) click(opener);
+  assert.equal(bias(), null, 'caregiver clicks cannot become gaze drift samples');
+  for (let i = 0; i < 8; i++) fire(opener);
+  assert.notEqual(bias(), null, 'gaze activations still contribute drift samples');
   const initialChoice = new Target(), underneath = new Target();
   let accidental = 0;
   initialChoice.addEventListener('dwell', () => { document.target = underneath; });

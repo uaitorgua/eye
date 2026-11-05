@@ -64,5 +64,5 @@ const icons = {
 
 export function iconElement(symbol) {
   const name = icons[symbol] || 'globe';
-  return h('span', { class: 'ui-icon', 'aria-hidden': 'true', style: `--icon:url(assets/icons/${name}.svg)` });
+  return h('span', { class: 'ui-icon', 'aria-hidden': 'true', style: `--icon:url(../assets/icons/${name}.svg)` });
 }
