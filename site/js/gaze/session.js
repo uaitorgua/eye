@@ -81,10 +81,10 @@ async function runCalibration() {
 }
 
 async function chooseMode() {
-  const mode = await choose('Як керувати? (обирає дорослий)', [
+  const mode = await choose('Як керувати?', [
     { label: 'Очима через вебкамеру', icon: '📷', value: 'webcam', sub: 'WebGazer, потрібне калібрування' },
     { label: 'Миша або трекер очей', icon: '🖱', value: 'mouse', sub: 'Tobii / Windows Eye Control рухають курсор' },
-  ], { cols: 2, cancel: false });
+  ], { cols: 2, cancel: false, subtitle: 'Обирає дорослий. Змінити можна будь-коли в налаштуваннях.' });
   updateSettings({ mode });
   applyMode();
 }

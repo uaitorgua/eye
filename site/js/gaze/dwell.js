@@ -79,9 +79,13 @@ function findTarget(x, y) {
 }
 
 function setCurrent(el) {
-  if (current) { current.classList.remove('dwell-focus'); current.style.removeProperty('--dwell'); }
+  if (current) { current.classList.remove('dwell-focus'); current.style.removeProperty('--dwell'); current.style.removeProperty('--dwell-h'); }
   current = el; since = performance.now();
-  if (current) current.classList.add('dwell-focus');
+  if (current) {
+    current.classList.add('dwell-focus');
+    // Target height lets CSS fill the whole tile as progress rises (see css/system.css).
+    current.style.setProperty('--dwell-h', (current.offsetHeight || 0) + 'px');
+  }
 }
 
 onPointer((x, y) => {

@@ -198,6 +198,21 @@ function pickFiles() {
   input.click();          // відкриється лише після справжнього кліку мишею (обмеження браузера)
 }
 
+// Empty library: a calm illustration instead of a blank page, with the next step spelled out.
+function emptyShelf() {
+  const art = h('span', { class: 'library-empty-art', 'aria-hidden': 'true' });
+  art.innerHTML = '<svg viewBox="0 0 300 220"><path d="M27 64c43-13 83-1 123 21 40-22 80-34 123-21v128c-43-13-83-1-123 21-40-22-80-34-123-21z" fill="#0d3686" transform="translate(0 4)"/>'
+    + '<path d="M30 55c42-12 80 0 120 22v124c-40-22-78-34-120-22z" fill="#fffaf0" stroke="#ddd4bf" stroke-width="3"/>'
+    + '<path d="M150 77c40-22 78-34 120-22v124c-42-12-80 0-120 22z" fill="#f2ead7" stroke="#ddd4bf" stroke-width="3"/>'
+    + '<path d="M150 77v124" stroke="#c8bda2" stroke-width="4"/>'
+    + '<path d="M161 198v18l14-9 14 9v-31" fill="#efb21d"/>'
+    + '<path d="M75 32 63 18m48 7-2-20m36 24 9-16" stroke="#efb21d" stroke-width="6" stroke-linecap="round"/></svg>';
+  return h('div', { class: 'library-empty-state' }, art,
+    h('div', { class: 'library-empty-copy' },
+      h('p', { class: 'library-empty-title' }, 'Полиця поки порожня'),
+      h('p', { class: 'library-empty' }, 'Спробуй коротку пробну книгу. Дорослий може додати власні PDF.')));
+}
+
 async function openLibrary() {
   if (libraryModal) return;
   const m = libraryModal = openModal({ title: 'Мої книги', cls: 'library' });
@@ -237,8 +252,7 @@ async function openLibrary() {
       bookTile.setAttribute('data-book-id', b.id);
       return bookTile;
     });
-    const content = list.length ? h('div', { class: 'library-books' }, ...items) :
-      h('p', { class: 'library-empty' }, 'Тут поки немає книг. Дорослий може додати PDF за допомогою кнопки нижче.');
+    const content = list.length ? h('div', { class: 'library-books' }, ...items) : emptyShelf();
     const previous = tile('Назад', () => { page--; render(); }, { cls: 'library-prev' });
     const next = tile('Далі', () => { page++; render(); }, { cls: 'library-next' });
     previous.disabled = page === 0;
@@ -268,7 +282,8 @@ async function openLibrary() {
       tile('Додати PDF', pickFiles, { sub: 'Для дорослого', cls: 'library-add' }),
       ...(list.length ? [tile(deleting ? 'Скасувати видалення' : 'Видалити книгу', () => { deleting = !deleting; render(); }, { cls: 'library-delete' })] : []),
       tile(currentId ? 'До книги' : (standalone ? 'Закрити' : 'Меню'), exit, { cls: 'library-exit', always: true }));
-    m.body.replaceChildren(...(deleting ? [h('p', { class: 'library-instruction' }, 'Оберіть книгу для видалення.')] : []), content, pagination, tools);
+    m.body.replaceChildren(...(deleting ? [h('p', { class: 'library-instruction' }, 'Оберіть книгу для видалення.')] : []), content,
+      ...(count > 1 ? [pagination] : []), tools);
     if (focused) {
       const sameBook = focusBook && [...m.body.querySelectorAll('.book')].find(node => node.getAttribute('data-book-id') === focusBook);
       const same = sameBook || (focusClass && m.body.querySelector(`.${focusClass}:not(:disabled)`));

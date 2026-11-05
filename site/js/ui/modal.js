@@ -4,16 +4,21 @@
 import { h } from './dom.js';
 import { store } from '../core/store.js';
 import { on, emit } from '../core/bus.js';
-import { iconElement } from './icons.js';
+import { iconElement, splitIcon } from './icons.js';
 
 let modalId = 0;
 const inertState = new Map();
 
-export function openModal({ title = '', cls = '' } = {}) {
+export function openModal({ title = '', subtitle = '', cls = '' } = {}) {
   const layer = document.getElementById('modal-layer');
   const previousFocus = document.activeElement;
   const id = 'modal-title-' + ++modalId;
-  const heading = title ? h('h2', { class: 'modal-title', id }, title) : null;
+  const head = splitIcon(title);
+  const heading = title ? h('header', { class: 'modal-head' },
+    head.icon ? h('span', { class: 'modal-head-icon' }, iconElement(head.icon)) : null,
+    h('div', { class: 'modal-head-copy' },
+      h('h2', { class: 'modal-title', id }, head.text),
+      subtitle ? h('p', { class: 'modal-subtitle' }, subtitle) : null)) : null;
   const el = h('div', { class: 'modal ' + cls, role: 'dialog', 'aria-modal': 'true',
     ...(heading ? { 'aria-labelledby': id } : { 'aria-label': 'Діалог' }), tabindex: '-1' }, heading);
   const body = h('div', { class: 'modal-body' });
@@ -78,9 +83,9 @@ export function grid(cols, ...tiles) {
 }
 
 // Питання з варіантами → Promise зі значенням вибраного варіанту (або null для «Скасувати»).
-export function choose(title, options, { cols = 3, cancel = true } = {}) {
+export function choose(title, options, { cols = 3, cancel = true, subtitle = '' } = {}) {
   return new Promise((resolve) => {
-    const m = openModal({ title, cls: 'choice' });
+    const m = openModal({ title, subtitle, cls: 'choice' + (options.length <= 2 ? ' choice-few' : '') });
     const done = (v) => { m.close(); resolve(v); };
     const size = 4;
     const pages = Math.ceil(options.length / size);
