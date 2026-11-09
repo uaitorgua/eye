@@ -80,6 +80,9 @@ const CSS = `
 .gz-dot.gz-val{background:radial-gradient(circle at 35% 32%,#cfe0ff,#5aa9ff 60%,#1e6bff 100%);
   box-shadow:0 0 22px 8px rgba(30,107,255,.45)}
 .gz-bar{position:absolute;left:0;right:0;bottom:28px;text-align:center;color:#8fa6c8;font-size:.95rem}
+.gz-cancel{position:absolute;top:18px;right:18px;z-index:10011;padding:12px 20px;border-radius:14px;cursor:pointer;
+  border:2px solid #3b5584;background:#14243f;color:#eaf2ff;font:600 16px/1.2 system-ui,sans-serif}
+.gz-cancel:hover,.gz-cancel:focus-visible{border-color:#eaf2ff;outline:none}
 `;
 function overlay() {
   if (!document.getElementById('gz-cal-style')) {
@@ -90,20 +93,37 @@ function overlay() {
   }
   const el = document.createElement('div');
   el.className = 'gz-cal';
+  // While calibrating, nothing underneath may react to gaze (see scope() in dwell.js).
+  el.setAttribute('data-gaze-block', '');
   document.body.appendChild(el);
   return el;
+}
+
+// Cancel for the adult helper: a mouse/keyboard button that survives overlay redraws, plus Esc.
+// It is deliberately not a gaze target: during calibration the eyes are busy following dots.
+function cancelButton(ov, onCancel) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'gz-cancel';
+  btn.textContent = 'Скасувати (Esc)';
+  btn.addEventListener('click', (e) => { e.stopPropagation(); onCancel(); });
+  const keep = new MutationObserver(() => { if (!btn.isConnected && ov.isConnected) ov.appendChild(btn); });
+  keep.observe(ov, { childList: true });
+  ov.appendChild(btn);
+  return () => keep.disconnect();
 }
 const say = (el, html) => { el.innerHTML = '<div class="gz-msg">' + html + '</div>'; };
 
 // ── 1. Гейт «обличчя в кадрі» ───────────────────────────────────────────────
 // Не починаємо калібрування, доки модель реально не бачить обличчя й зіниці:
 // інакше вся процедура марна, а людина дізнається про це аж наприкінці.
-export async function faceGate(ov, { timeoutMs = 25000, needMs = 1200 } = {}) {
+export async function faceGate(ov, { timeoutMs = 25000, needMs = 1200, cancelled = () => false } = {}) {
   const t0 = performance.now();
   let okSince = null;
   document.body.classList.add('calibrating');
   try { wg().showVideoPreview(true); } catch { /* ok */ }
   while (performance.now() - t0 < timeoutMs) {
+    if (cancelled()) break;
     const pos = positions();
     // Достатньо, щоб модель бачила ОБЛИЧЧЯ (468 точок). Зіниці (478, iris-модель) бажані,
     // але не обов'язкові: без них калібрування працює за запасним таймером,
@@ -174,7 +194,7 @@ async function collectPoint(ov, x, y, prevOff, skipped) {
 
 // ── 3. Вимірювання якості в одній точці ─────────────────────────────────────
 // accuracy — середнє відхилення від цілі; precision — RMS між сусідніми семплами.
-async function measurePoint(ov, x, y, { ms = 2200, sampleMs = 50 } = {}) {
+async function measurePoint(ov, x, y, { ms = 2200, sampleMs = 50, cancelled = () => false } = {}) {
   const dot = document.createElement('div');
   dot.className = 'gz-dot gz-val';
   dot.style.left = x + 'px';
@@ -184,7 +204,7 @@ async function measurePoint(ov, x, y, { ms = 2200, sampleMs = 50 } = {}) {
   const pts = [];
   let expected = 0;
   const t0 = performance.now();
-  while (performance.now() - t0 < ms) {
+  while (performance.now() - t0 < ms && !cancelled()) {
     expected++;
     const p = await wg().getCurrentPrediction();
     if (p && Number.isFinite(p.x) && Number.isFinite(p.y)) pts.push([p.x, p.y]);
@@ -213,15 +233,23 @@ export async function runCalibration(opts) {
   if (!g) return { ok: false, error: 'WebGazer не завантажено' };
   const ov = overlay();
   const status = (t) => { if (onStatus) onStatus(t); };
-  let skip = false;
-  const onKey = (e) => { if ([' ', 'Enter'].includes(e.key)) { skip = true; e.preventDefault(); } };
+  let skip = false, cancel = false;
+  const cancelled = () => cancel;
+  const CANCELLED = { ok: false, cancelled: true, error: 'Калібрування скасовано' };
+  const onKey = (e) => {
+    if (e.key === 'Escape') { cancel = true; e.preventDefault(); }
+    else if ([' ', 'Enter'].includes(e.key)) { skip = true; e.preventDefault(); }
+  };
   const onClick = () => { skip = true; };
   document.addEventListener('keydown', onKey, true);
   ov.addEventListener('click', onClick);
+  const stopCancel = cancelButton(ov, () => { cancel = true; });
 
   try {
     status('Шукаю обличчя…');
-    if (!(await faceGate(ov))) {
+    const faceOk = await faceGate(ov, { cancelled });
+    if (cancel) return CANCELLED;
+    if (!faceOk) {
       return { ok: false, error: 'Не бачу обличчя в кадрі. Перевірте камеру та освітлення.' };
     }
     try { g.showVideoPreview(false); } catch { /* ok */ }
@@ -239,7 +267,8 @@ export async function runCalibration(opts) {
       bar.textContent = 'Точка ' + (i + 1) + ' з ' + calPoints.length;
       status('Калібрування ' + (i + 1) + '/' + calPoints.length);
       skip = false;
-      const r = await collectPoint(ov, x, y, prevOff, () => skip);
+      const r = await collectPoint(ov, x, y, prevOff, () => skip || cancel);
+      if (cancel) return CANCELLED;
       if (r.off) prevOff = r.off;
       stats.push({ x, y, samples: r.samples, spread: r.spread });
       await wait(250);
@@ -256,7 +285,8 @@ export async function runCalibration(opts) {
       bar.textContent = 'Уточнюємо точку ' + (i + 1) + ' з ' + suspects.length;
       status('Уточнення ' + (i + 1) + '/' + suspects.length);
       skip = false;
-      await collectPoint(ov, suspects[i].x, suspects[i].y, prevOff, () => skip);
+      await collectPoint(ov, suspects[i].x, suspects[i].y, prevOff, () => skip || cancel);
+      if (cancel) return CANCELLED;
       await wait(200);
     }
 
@@ -266,7 +296,8 @@ export async function runCalibration(opts) {
     const points = [];
     for (let i = 0; i < vpFrac.length; i++) {
       status('Перевірка ' + (i + 1) + '/' + vpFrac.length);
-      points.push(await measurePoint(ov, vpFrac[i][0] * W, vpFrac[i][1] * H));
+      points.push(await measurePoint(ov, vpFrac[i][0] * W, vpFrac[i][1] * H, { cancelled }));
+      if (cancel) return CANCELLED;
     }
 
     const geoNow = geometry(positions(), geo);
@@ -293,6 +324,8 @@ export async function runCalibration(opts) {
     return report;
   } finally {
     document.removeEventListener('keydown', onKey, true);
+    stopCancel();
+    document.body.classList.remove('calibrating');
     ov.remove();
     try { wg().showVideoPreview(true); } catch { /* ok */ }
   }

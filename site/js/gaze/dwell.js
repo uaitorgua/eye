@@ -33,21 +33,25 @@ export function setGestureSuppressed(v) { gestureSuppressed = !!v; }
 let current = null, since = 0, locked = null;
 let pending = null, pendingSince = 0;
 let lastX = -1, lastY = -1;
+let mouseClickBlocked = false;
 let prevNow = 0, armed = null;
 
-export function fire(el) {
+export function fire(el, gaze = true) {
   el.classList.add('dwell-fired');
   setTimeout(() => el.classList.remove('dwell-fired'), 300);
   if (store.settings.sound) beep();
   // Людина щойно дивилась саме на цю ціль — беремо це як орієнтир для виявлення дрейфу.
-  if (store.settings.mode === 'webcam') {
+  if (gaze && store.settings.mode === 'webcam') {
     try { noteActivation(lastX, lastY, el.getBoundingClientRect()); } catch { /* ok */ }
   }
   el.dispatchEvent(new CustomEvent('dwell', { bubbles: true }));
 }
 
-// Область пошуку: верхня модалка → повноекранний шар [data-layer] (Тетріс) → весь документ.
+// Область пошуку: блокувальний оверлей [data-gaze-block] → верхня модалка → повноекранний шар [data-layer] (Тетріс) → весь документ.
 function scope() {
+  // A blocking overlay (calibration) owns the screen: nothing below it may be activated.
+  const blockers = document.querySelectorAll('[data-gaze-block]');
+  if (blockers.length) return blockers[blockers.length - 1];
   const modals = document.querySelectorAll('#modal-layer > .modal');
   if (modals.length) return modals[modals.length - 1];
   const layers = [...document.querySelectorAll('[data-layer]:not(.hidden)')];
@@ -78,12 +82,17 @@ function findTarget(x, y) {
 }
 
 function setCurrent(el) {
-  if (current) { current.classList.remove('dwell-focus'); current.style.removeProperty('--dwell'); }
+  if (current) { current.classList.remove('dwell-focus'); current.style.removeProperty('--dwell'); current.style.removeProperty('--dwell-h'); }
   current = el; since = performance.now();
-  if (current) current.classList.add('dwell-focus');
+  if (current) {
+    current.classList.add('dwell-focus');
+    // Target height lets CSS fill the whole tile as progress rises (see css/system.css).
+    current.style.setProperty('--dwell-h', (current.offsetHeight || 0) + 'px');
+  }
 }
 
 onPointer((x, y) => {
+  if (mouseClickBlocked && (x !== lastX || y !== lastY)) mouseClickBlocked = false;
   lastX = x; lastY = y;
   if (dot) {
     dot.style.transform = `translate(${x}px, ${y}px)`;
@@ -95,14 +104,19 @@ function loop(now) {
   requestAnimationFrame(loop);
   const dt = now - prevNow; prevNow = now;
   if (lastX < 0) return;
+  if (store.settings.mode === 'mouse' && mouseClickBlocked) {
+    if (current) setCurrent(null);
+    if (ring) ring.style.setProperty('--p', 0);
+    return;
+  }
   if (eyes.closed) { since += dt; return; }      // очі закриті — нічого не рахуємо і не перемикаємо
   if (now < cooldownUntil || gestureSuppressed) { if (current) setCurrent(null); if (ring) ring.style.setProperty('--p', 0); return; }
   const t = findTarget(lastX, lastY);
-  if (t !== locked) locked = null;         // погляд пішов — ціль знову можна натиснути
   if (t !== current) {
     if (t !== pending) { pending = t; pendingSince = now; }
     if (now - pendingSince >= SWITCH_MS || !current) { setCurrent(t); pending = null; }
   } else pending = null;
+  if (current !== locked) locked = null;   // ціль змінилася — попередню можна натиснути знову
 
   let p = 0;
   if (current && current !== locked && current.isConnected) {
@@ -137,7 +151,10 @@ export function initDwell() {
   // Клік мишею (викладач) = миттєвий dwell.
   document.addEventListener('click', (e) => {
     const el = e.target.closest('[data-dwell]');
-    if (el && scope().contains(el) && !el.disabled) { e.preventDefault(); fire(el); }
+    if (el && scope().contains(el) && !el.disabled) {
+      mouseClickBlocked = true;
+      e.preventDefault(); fire(el, false);
+    }
   });
   
   // Жест очима = клік по цілі, яка була під курсором, коли очі закрилися.

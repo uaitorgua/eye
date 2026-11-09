@@ -1,27 +1,25 @@
-/* Браузер: повноекранний шар над меню (3000), поряд із Книгами (3500), під модалками (5000). */
-#browser-section { position: fixed; inset: 0; z-index: 3600; display: flex; flex-direction: column; background: #07090d; }
-
-.br-top { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 6px 16px; height: 44px;
-  background: var(--panel); border-bottom: 1px solid var(--border); flex-shrink: 0; }
-#br-title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 600; }
-#br-host { color: var(--dim); white-space: nowrap; }
-
+/* Browser keeps its reading and dwell surfaces distinct from the page content. */
+#browser-section { position: fixed; inset: 0; z-index: 3600; display: flex; flex-direction: column; background: #f7f4ec; color: #152440; }
+.br-top { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 8px 20px; min-height: 52px; background: #fffdf8; border-bottom: 1px solid #dedbd2; flex-shrink: 0; }
+#br-title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 700; }
+#br-host { color: #535f73; white-space: nowrap; }
 .br-main { position: relative; flex: 1; min-height: 0; }
-/* Текст — вузька колонка великим шрифтом: зручно читати й не треба водити очима від краю до краю. */
-#br-view { position: absolute; inset: 0; overflow-y: auto; padding: 24px max(24px, calc((100% - 46em) / 2)) 40vh;
-  line-height: 1.55; color: #eef1f6; user-select: text; }
-#br-view h2.br-block { font-size: 1.25em; margin: 1.2em 0 .5em; color: #fff; }
+#br-view { position: absolute; inset: 0; overflow-y: auto; padding: 24px max(24px, calc((100% - 46em) / 2)) 40vh; line-height: 1.55; color: #152440; user-select: text; }
+#br-view h2.br-block { font-size: 1.25em; margin: 1.2em 0 .5em; color: #152440; }
 #br-view p.br-block { margin: 0 0 .9em; }
-/* Абзаци з посиланнями позначені рискою: людина знає, що «🔗 Посилання» тут щось покаже. */
-#br-view .br-block.has-links { border-left: 6px solid rgba(90, 169, 255, .55); padding-left: 14px; }
-
-.br-hint-top { left: 0; right: 0; top: 0; height: 16%; background: linear-gradient(rgba(90,169,255,.45), transparent); }
-.br-hint-bottom { left: 0; right: 0; bottom: 0; height: 24%; background: linear-gradient(transparent, rgba(90,169,255,.45)); }
-
-.br-bar { display: grid; grid-template-columns: repeat(8, 1fr); gap: 10px; padding: 10px; height: 130px; flex-shrink: 0;
-  background: var(--panel); border-top: 1px solid var(--border); }
-.br-bar .tile { min-width: 0; min-height: 0; font-size: 18px; }
-.br-bar .tile-icon { font-size: 32px; }
-#br-links { border-color: var(--accent); }
-#br-exit { border-color: #555; }
-#br-back:disabled { opacity: .4; }
+#br-view .br-block.has-links { border-left: 4px solid #1856d8; padding-left: 14px; }
+.br-hint-top { left: 0; right: 0; top: 0; height: 16%; background: linear-gradient(rgba(24,86,216,.3), transparent); }
+.br-hint-bottom { left: 0; right: 0; bottom: 0; height: 24%; background: linear-gradient(transparent, rgba(24,86,216,.3)); }
+.br-bar { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 10px; padding: 10px; height: 130px; flex-shrink: 0; background: #eeeae1; border-top: 1px solid #d4cfc4; }
+#browser-section .br-bar .tile { min-width: 0; min-height: 0; font-size: 18px; background: #fffdf8; color: #152440; border: 2px solid #b7becb; }
+#browser-section .br-bar .tile-icon { font-size: 32px; }
+#browser-section .br-bar .tile:focus-visible, #browser-section .br-bar .tile.dwell-focus { outline: 4px solid #1856d8; outline-offset: -4px; }
+#browser-section .br-bar [data-dwell]::after { background: #1856d8; }
+#browser-section #br-links { border-color: #1856d8; }
+#browser-section #br-back:disabled { opacity: .55; }
+@media (max-width: 760px) {
+  .br-bar { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); height: min(200px, 34vh); gap: 6px; padding: 6px; }
+  #browser-section .br-bar .tile { font-size: clamp(13px, 3.2vw, 17px); padding: 4px; }
+  #browser-section .br-bar .tile-icon { font-size: 24px; }
+  #br-view { padding-left: 18px; padding-right: 18px; }
+}

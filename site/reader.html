@@ -4,9 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Читанка PDF — керування очима</title>
-<link rel="stylesheet" href="css/base.css">
-<link rel="stylesheet" href="css/modals.css">
-<link rel="stylesheet" href="css/reader.css">
+<link rel="stylesheet" href="css/base.css?v=20261105c">
+<link rel="stylesheet" href="css/modals.css?v=20261105c">
+<link rel="stylesheet" href="css/reader.css?v=20261105c">
+<link rel="stylesheet" href="css/system.css?v=20261105c">
 <script src="lib/webgazer.js"></script>
 </head>
 <body>
@@ -20,15 +21,16 @@
     <div class="rd-hint" id="rd-hint-left"></div><div class="rd-hint" id="rd-hint-right"></div>
   </div>
   <nav class="rd-bar">
-    <button class="tile" id="rd-exit" data-dwell><span class="tile-icon">⬅</span><span class="tile-label">Вихід</span></button>
-    <button class="tile" id="rd-library" data-dwell><span class="tile-icon">📚</span><span class="tile-label">Книги</span></button>
-    <button class="tile" id="rd-zoom-out" data-dwell><span class="tile-icon">🔍</span><span class="tile-label">Менше</span></button>
-    <button class="tile" id="rd-fit" data-dwell><span class="tile-icon">↔</span><span class="tile-label">По ширині</span></button>
-    <button class="tile" id="rd-zoom-in" data-dwell><span class="tile-icon">🔎</span><span class="tile-label">Більше</span></button>
-    <button class="tile" id="rd-prev" data-dwell><span class="tile-icon">⏫</span><span class="tile-label">Сторінка назад</span></button>
-    <button class="tile" id="rd-next" data-dwell><span class="tile-icon">⏬</span><span class="tile-label">Сторінка далі</span></button>
-    <button class="tile" id="rd-auto" data-dwell><span class="tile-icon">👁</span><span class="tile-label">Прокрутка очима</span></button>
-    <button class="tile" id="rd-pause" data-dwell data-dwell-always><span class="tile-icon">⏸</span><span class="tile-label">Пауза</span></button>
+    <button class="tile" id="rd-exit" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/arrow-left.svg)"></span></span><span class="tile-label">Вихід</span></button>
+    <button class="tile" id="rd-library" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/library.svg)"></span></span><span class="tile-label">Книги</span></button>
+    <button class="tile" id="rd-zoom-out" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/zoom-out.svg)"></span></span><span class="tile-label">Менше</span></button>
+    <button class="tile" id="rd-fit" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/move-horizontal.svg)"></span></span><span class="tile-label">По ширині</span></button>
+    <button class="tile" id="rd-zoom-in" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/zoom-in.svg)"></span></span><span class="tile-label">Більше</span></button>
+    <button class="tile" id="rd-prev" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/chevrons-up.svg)"></span></span><span class="tile-label">Назад</span></button>
+    <button class="tile" id="rd-next" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/chevrons-down.svg)"></span></span><span class="tile-label">Далі</span></button>
+    <button class="tile" id="rd-auto" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/eye.svg)"></span></span><span class="tile-label">Прокрутка</span></button>
+    <button class="tile rd-more" id="rd-more" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/ellipsis.svg)"></span></span><span class="tile-label">Ще</span></button>
+    <button class="tile" id="rd-pause" data-dwell data-dwell-always><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/pause.svg)"></span></span><span class="tile-label">Пауза</span></button>
   </nav>
 </section>
 

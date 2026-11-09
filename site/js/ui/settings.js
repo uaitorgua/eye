@@ -11,51 +11,75 @@ import { exportProgramFile, importProgramFile } from './file-io.js';
 export const CLICK_MODES = { dwell: 'затримка погляду', doubleblink: 'подвійне кліпання', longclose: 'довго закрити очі' };
 
 const STEPPERS = [
-  { key: 'dwellMs', label: '⏱ Час погляду', step: 200, min: 400, max: 4000, fmt: v => (v / 1000).toFixed(1) + ' с' },
-  { key: 'longCloseMs', label: '😌 Довге закриття очей', step: 200, min: 600, max: 4000, fmt: v => (v / 1000).toFixed(1) + ' с' },
-  { key: 'readerScrollSpeed', label: '📖 Прокрутка книги', step: 50, min: 100, max: 1200, fmt: v => v + ' px/с' },
-  { key: 'smoothing', label: '〰 Плавність', step: 0.05, min: 0, max: 0.95, fmt: v => Math.round(v * 100) + '%' },
-  { key: 'snap', label: '🧲 Магніт', step: 10, min: 0, max: 200, fmt: v => v + ' px' },
-  { key: 'breakReminderMin', label: '🌿 Нагадування про перерву', step: 5, min: 0, max: 60, fmt: v => v ? v + ' хв' : 'вимк' },
-  { key: 'zoom', label: '🔍 Масштаб схеми', step: 0.1, min: 0.5, max: 2, fmt: v => Math.round(v * 100) + '%' },
-  { key: 'runSpeedMs', label: '🐢 Пауза між кроками', step: 200, min: 200, max: 3000, fmt: v => (v / 1000).toFixed(1) + ' с' },
+  { key: 'dwellMs', label: 'Час погляду', step: 200, min: 400, max: 4000, fmt: v => (v / 1000).toFixed(1) + ' с' },
+  { key: 'longCloseMs', label: 'Довге закриття очей', step: 200, min: 600, max: 4000, fmt: v => (v / 1000).toFixed(1) + ' с' },
+  { key: 'readerScrollSpeed', label: 'Прокрутка книги', step: 50, min: 100, max: 1200, fmt: v => v + ' px/с' },
+  { key: 'smoothing', label: 'Плавність', step: 0.05, min: 0, max: 0.95, fmt: v => Math.round(v * 100) + '%' },
+  { key: 'snap', label: 'Магніт', step: 10, min: 0, max: 200, fmt: v => v + ' px' },
+  { key: 'breakReminderMin', label: 'Нагадування про перерву', step: 5, min: 0, max: 60, fmt: v => v ? v + ' хв' : 'вимк' },
+  { key: 'zoom', label: 'Масштаб схеми', step: 0.1, min: 0.5, max: 2, fmt: v => Math.round(v * 100) + '%' },
+  { key: 'runSpeedMs', label: 'Пауза між кроками', step: 200, min: 200, max: 3000, fmt: v => (v / 1000).toFixed(1) + ' с' },
 ];
 
 export function openSettings() {
-  const m = openModal({ title: '⚙ Налаштування', cls: 'settings' });
+  const m = openModal({ title: 'Налаштування', cls: 'settings' });
+  let page = 0;
   function render() {
+    const focus = m.body.contains(document.activeElement) ? document.activeElement.getAttribute('data-settings-focus') : null;
     const s = store.settings;
+    const control = (label, action, key, opts = {}) => {
+      const button = tile(label, action, opts);
+      button.setAttribute('data-settings-focus', key);
+      return button;
+    };
     const rows = STEPPERS.map(st => {
       const change = (d) => {
         const v = Math.round(Math.min(st.max, Math.max(st.min, s[st.key] + d * st.step)) * 100) / 100;
         updateSettings({ [st.key]: v }); render();
       };
+      const minus = control('−', () => change(-1), st.key + '-minus', { cls: 'op' });
+      const plus = control('+', () => change(1), st.key + '-plus', { cls: 'op' });
+      minus.setAttribute('aria-label', 'Зменшити: ' + st.label);
+      plus.setAttribute('aria-label', 'Збільшити: ' + st.label);
       return h('div', { class: 'stepper' },
-        h('div', { class: 'stepper-label' }, st.label),
-        tile('−', () => change(-1), { cls: 'op' }),
-        h('div', { class: 'stepper-value' }, st.fmt(s[st.key])),
-        tile('+', () => change(1), { cls: 'op' }));
+        h('div', { class: 'stepper-label' }, st.label), minus,
+        h('div', { class: 'stepper-value' }, st.fmt(s[st.key])), plus);
     });
-    const toggles = grid(5,
-      tile(s.autoCalibrate ? 'Автокалібр.: так' : 'Автокалібр.: ні', () => { updateSettings({ autoCalibrate: !s.autoCalibrate }); render(); }, { icon: '🎯' }),
-      tile('Клік: ' + CLICK_MODES[s.clickMode], () => {
+    const toggles = [
+      control(s.autoCalibrate ? 'Автокалібр.: так' : 'Автокалібр.: ні', () => { updateSettings({ autoCalibrate: !s.autoCalibrate }); render(); }, 'autoCalibrate', { icon: '🎯' }),
+      control('Клік: ' + CLICK_MODES[s.clickMode], () => {
         const keys = Object.keys(CLICK_MODES);
         const next = keys[(keys.indexOf(s.clickMode) + 1) % keys.length];
         if (next !== 'dwell' && s.mode !== 'webcam') toast('Кліпання розпізнається лише в режимі камери');
         updateSettings({ clickMode: next }); render();
-      }, { icon: '👁' }),
-      tile(s.voiceEnabled ? 'Озвучка: Увімк' : 'Озвучка: Вимк', () => { updateSettings({ voiceEnabled: !s.voiceEnabled }); render(); }, { icon: '🔊' }),
-      tile(s.lang === 'uk' ? 'Мова: 🇺🇦 Укр' : 'Мова: 🇬🇧 Eng', () => { updateSettings({ lang: s.lang === 'uk' ? 'en' : 'uk' }); render(); }, { icon: '🌐' }),
-      tile(s.sound ? 'Звук: так' : 'Звук: ні', () => { updateSettings({ sound: !s.sound }); render(); }, { icon: '🔔' }),
-      tile(s.showDot ? 'Точка: так' : 'Точка: ні', () => { updateSettings({ showDot: !s.showDot }); render(); }, { icon: '📍' }),
-      tile(s.mode === 'webcam' ? 'Режим: камера' : 'Режим: миша', () => { m.close(); emit('choose-mode'); }, { icon: '🔄' }),
+      }, 'clickMode', { icon: '👁' }),
+      control(s.voiceEnabled ? 'Озвучка: Увімк' : 'Озвучка: Вимк', () => { updateSettings({ voiceEnabled: !s.voiceEnabled }); render(); }, 'voiceEnabled', { icon: '🔊' }),
+      control(s.lang === 'uk' ? 'Мова: Укр' : 'Мова: Eng', () => { updateSettings({ lang: s.lang === 'uk' ? 'en' : 'uk' }); render(); }, 'lang', { icon: '🌐' }),
+      control(s.sound ? 'Звук: так' : 'Звук: ні', () => { updateSettings({ sound: !s.sound }); render(); }, 'sound', { icon: '🔔' }),
+      control(s.showDot ? 'Точка: так' : 'Точка: ні', () => { updateSettings({ showDot: !s.showDot }); render(); }, 'showDot', { icon: '📍' }),
+      control(s.mode === 'webcam' ? 'Режим: камера' : 'Режим: миша', () => { m.close(); emit('choose-mode'); }, 'mode', { icon: '🔄' }),
       ...(s.mode === 'webcam' ? [
-        tile('Камера', () => { m.close(); emit('choose-camera'); }, { icon: '📷' }),
-        tile('Перевірка очей', () => openEyeTest(), { icon: '👁' }),
+        control('Калібрувати', () => { m.close(); emit('calibrate'); }, 'calibrate', { icon: '🎯' }),
+        control('Камера', () => { m.close(); emit('choose-camera'); }, 'camera', { icon: '📷' }),
+        control('Перевірка очей', () => openEyeTest(), 'eyeTest', { icon: '👁' }),
       ] : []),
-      tile('Вийти', () => { window.close(); location.href = 'about:blank'; }, { icon: '🚪', cls: 'danger' }),
-      tile('Закрити', () => m.close(), { icon: '✓', cls: 'ok' }));
-    m.body.replaceChildren(h('div', { class: 'steppers' }, ...rows), toggles);
+      control('Вийти з програми', () => { window.close(); location.href = 'about:blank'; }, 'exit', { icon: '🚪', cls: 'danger' }),
+    ];
+    const pages = [h('div', { class: 'steppers' }, rows.slice(0, 4)), h('div', { class: 'steppers' }, rows.slice(4, 8))];
+    for (let i = 0; i < toggles.length; i += 4) pages.push(h('div', { class: 'settings-toggles' }, toggles.slice(i, i + 4)));
+    page = Math.min(page, pages.length - 1);
+    const prev = control('Назад', () => { page--; render(); }, 'prev');
+    const next = control('Далі', () => { page++; render(); }, 'next');
+    if (!page) prev.setAttribute('disabled', '');
+    if (page === pages.length - 1) next.setAttribute('disabled', '');
+    const close = control('Закрити', () => m.close(), 'close', { cls: 'ok settings-close', always: true });
+    const nav = h('nav', { class: 'settings-nav', 'aria-label': 'Сторінки налаштувань' }, prev,
+      h('span', { class: 'settings-page-count', 'aria-live': 'polite' }, `${page + 1} / ${pages.length}`), next, close);
+    m.body.replaceChildren(pages[page], nav);
+    if (focus) {
+      const target = m.body.querySelector(`[data-settings-focus="${focus}"]`);
+      (target && !target.disabled ? target : (prev.disabled ? next : prev)).focus();
+    }
   }
   render();
 }

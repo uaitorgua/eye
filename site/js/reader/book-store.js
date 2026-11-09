@@ -12,7 +12,7 @@ function db() {
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
-  });
+  }).catch(error => { dbPromise = null; throw error; });
   return dbPromise;
 }
 
