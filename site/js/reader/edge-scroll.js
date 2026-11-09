@@ -11,6 +11,17 @@ export const ZONES = { top: 0.16, bottom: 0.24, side: 0.12 };
 export const ONSET_MS = 450;
 const MIN_FACTOR = 0.15;
 
+export function projectScrollBand(x, y, view, top, bottom) {
+  const contains = band => x >= band.left && x < band.right && y >= band.top && y < band.bottom;
+  const inTop = contains(top);
+  const inBottom = contains(bottom);
+  return {
+    x: inTop || inBottom ? Math.max(view.left, Math.min(view.right - 1, x)) : x,
+    y: inTop ? view.top + 1 : inBottom ? view.bottom - 1 : y,
+    inBand: inTop || inBottom,
+  };
+}
+
 export function createEdgeScroller({ zones = ZONES, onsetMs = ONSET_MS } = {}) {
   let zone = null, since = 0;
 

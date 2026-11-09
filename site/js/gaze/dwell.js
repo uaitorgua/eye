@@ -64,9 +64,9 @@ function usable(el) {
   return true;
 }
 
-function findTarget(x, y) {
+function findTarget(point, x, y) {
   const sc = scope();
-  const hit = document.elementFromPoint(x, y)?.closest('[data-dwell]');
+  const hit = point?.closest('[data-dwell]');
   if (hit && sc.contains(hit) && usable(hit)) return hit;
   // «Магніт»: найближча ціль у радіусі snap.
   let best = null, bestD = store.settings.snap;
@@ -111,7 +111,14 @@ function loop(now) {
   }
   if (eyes.closed) { since += dt; return; }      // очі закриті — нічого не рахуємо і не перемикаємо
   if (now < cooldownUntil || gestureSuppressed) { if (current) setCurrent(null); if (ring) ring.style.setProperty('--p', 0); return; }
-  const t = findTarget(lastX, lastY);
+  const point = document.elementFromPoint(lastX, lastY);
+  if (point?.closest('[data-gaze-scroll]')) {
+    if (current) setCurrent(null);
+    pending = locked = armed = null;
+    if (ring) ring.style.setProperty('--p', 0);
+    return;
+  }
+  const t = findTarget(point, lastX, lastY);
   if (t !== current) {
     if (t !== pending) { pending = t; pendingSince = now; }
     if (now - pendingSince >= SWITCH_MS || !current) { setCurrent(t); pending = null; }

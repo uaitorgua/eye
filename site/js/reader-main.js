@@ -2,5 +2,5 @@
 import { initGazeSession } from './gaze/session.js';
 import { initReader } from './reader/reader.js';
 
-initGazeSession({ pauseBtn: document.getElementById('rd-pause') });
+initGazeSession();
 initReader({ standalone: true });

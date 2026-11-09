@@ -1,6 +1,5 @@
 ﻿// Екран «📖 Книги»: бібліотека PDF + читанка на весь екран.
-// Читання: погляд у нижній/верхній смузі тексту плавно прокручує (edge-scroll.js),
-// знизу — панель великих кнопок: масштаб, гортання сторінок, прокрутка очима вкл/викл, пауза.
+// Читання: окремі верхня/нижня смуги керують gaze-scroll, кнопки зібрані у правій рейці.
 // Додавання PDF — викладач мишею (кнопка або перетягування файлу на екран).
 import { h, toast } from '../ui/dom.js';
 import { openModal, tile, choose } from '../ui/modal.js';
@@ -8,14 +7,14 @@ import { store, updateSettings } from '../core/store.js';
 import { emit, on } from '../core/bus.js';
 import { onPointer } from '../gaze/pointer.js';
 import { eyes } from '../gaze/blink.js';
-import { createEdgeScroller } from './edge-scroll.js';
+import { createEdgeScroller, projectScrollBand } from './edge-scroll.js';
 import { PdfView } from './pdf-view.js';
 import * as books from './book-store.js';
 
 const LAST_BOOK = 'eyeflow.lastBook';
 const $ = (id) => document.getElementById(id);
 
-let view, section, currentId = null, gx = -1, gy = -1, saveTimer, libraryModal;
+let view, section, currentId = null, gx = -1, gy = -1, pointerAt = -Infinity, saveTimer, libraryModal;
 const scroller = createEdgeScroller();
 
 // standalone: окрема сторінка reader.html — «Вихід» стає «Меню» (калібрування, налаштування, перехід у EyeFlow).
@@ -24,7 +23,8 @@ let standalone = false;
 export function initReader({ standalone: alone = false } = {}) {
   standalone = alone;
   section = $('reader-section');
-  view = new PdfView($('reader-view'), $('reader-pages'), { onChange: onViewChange });
+  const viewEl = $('reader-view');
+  view = new PdfView(viewEl, $('reader-pages'), { onChange: onViewChange });
 
   const bind = (id, fn) => $(id).addEventListener('dwell', fn);
   bind('rd-exit', () => (standalone ? openStandaloneMenu() : closeReader()));
@@ -38,15 +38,16 @@ export function initReader({ standalone: alone = false } = {}) {
   bind('rd-next', () => view.goToPage(view.position().page + 1));
   bind('rd-auto', () => updateSettings({ readerAutoScroll: !store.settings.readerAutoScroll }));
   bind('rd-pause', () => emit('toggle-pause'));
-  // Вузькі екрани: основні кнопки в панелі, решта — на сторінці «Ще».
+  $('rd-hint-top').addEventListener('click', () => viewEl.scrollBy(0, -viewEl.clientHeight * 0.8));
+  $('rd-hint-bottom').addEventListener('click', () => viewEl.scrollBy(0, viewEl.clientHeight * 0.8));
   bind('rd-more', () => {
-    const more = $('reader-section').querySelector('.rd-bar').classList.toggle('more');
-    $('rd-more').querySelector('.tile-label').textContent = more ? 'Готово' : 'Ще';
+    const more = section.querySelector('.rd-rail').classList.toggle('more');
+    $('rd-more').querySelector('.tile-label').textContent = more ? 'Назад до читання' : 'Ще';
   });
   on('settings-changed', renderBar);
   on('pause-changed', renderBar);
 
-  onPointer((x, y) => { gx = x; gy = y; });
+  onPointer((x, y) => { gx = x; gy = y; pointerAt = performance.now(); });
   requestAnimationFrame(scrollLoop);
 
   // Викладач: перетягнути PDF на екран.
@@ -81,7 +82,7 @@ async function openStandaloneMenu() {
 export function closeReader() {
   saveNow();
   setDotDim(false);           // повертаємо яскраву точку за межами читанки
-  $('reader-section').querySelector('.rd-bar').classList.remove('more');
+  section.querySelector('.rd-rail').classList.remove('more');
   $('rd-more').querySelector('.tile-label').textContent = 'Ще';
   section.classList.add('hidden');
   if (!standalone && location.hash === '#/books') history.replaceState(null, '', '#/');
@@ -93,11 +94,19 @@ function scrollLoop(now) {
   requestAnimationFrame(scrollLoop);
   const dt = Math.min(0.1, (now - prev) / 1000); prev = now;
   const active = !section.classList.contains('hidden') && view.doc && store.settings.readerAutoScroll
-    && !store.paused && !eyes.closed && !document.querySelector('#modal-layer > .modal');
+    && !store.paused && !eyes.closed && !document.hidden
+    && (store.settings.mode !== 'webcam' || now - pointerAt < 500)
+    && !document.querySelector('#modal-layer > .modal, [data-gaze-block]');
   const el = $('reader-view');
   if (!active || gx < 0) { scroller.reset(); setHints(null, 0); setDotDim(false); return; }
   const r = el.getBoundingClientRect();
-  const v = scroller.update(gx, gy, r, now, { canX: view.canScrollX, maxSpeed: store.settings.readerScrollSpeed });
+  const point = projectScrollBand(gx, gy, r,
+    $('rd-hint-top').getBoundingClientRect(), $('rd-hint-bottom').getBoundingClientRect());
+  const v = scroller.update(point.x, point.y, r, now, {
+    canX: !point.inBand && view.canScrollX,
+    canY: point.inBand && el.scrollHeight > el.clientHeight + 2,
+    maxSpeed: store.settings.readerScrollSpeed,
+  });
   setHints(v.zone, v.ready);
   if (v.vx || v.vy) el.scrollBy(v.vx * dt, v.vy * dt);
   // Точка погляду не має закривати слова: у зоні тексту робимо її ледь помітною,
@@ -112,7 +121,10 @@ function setDotDim(dim) {
 }
 
 function setHints(zone, ready) {
-  for (const z of ['top', 'bottom', 'left', 'right']) {
+  for (const z of ['top', 'bottom']) {
+    $('rd-hint-' + z).style.setProperty('--scroll-progress', zone === z ? 0.12 + 0.88 * ready : 0);
+  }
+  for (const z of ['left', 'right']) {
     const hint = $('rd-hint-' + z);
     hint.style.opacity = zone === z ? (0.25 + 0.6 * ready).toFixed(2) : 0;
   }
@@ -137,6 +149,7 @@ function renderBar() {
   const s = store.settings;
   $('rd-auto').querySelector('.tile-label').textContent = s.readerAutoScroll ? 'Прокрутка: так' : 'Прокрутка: ні';
   $('rd-auto').classList.toggle('active', s.readerAutoScroll);
+  $('rd-auto').setAttribute('aria-pressed', s.readerAutoScroll);
   $('rd-pause').querySelector('.tile-label').textContent = store.paused ? 'Продовжити' : 'Пауза';
 }
 

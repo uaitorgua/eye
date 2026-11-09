@@ -1,4 +1,4 @@
-﻿// Чи зупинився погляд (фіксація). [pure]
+// Чи зупинився погляд (фіксація). [pure]
 // Працює ДО калібрування: дивимось не на екранні координати, а на положення зіниці всередині ока
 // (частка ширини ока), тож рух голови майже не впливає.
 //
@@ -29,6 +29,27 @@ export function createFixationDetector({ windowMs = WINDOW_MS, maxSpread = MAX_S
   };
 }
 
+export function createTargetMotion(from, to, duration) {
+  let elapsed = 0, previous = null;
+  return (now, hasSignal) => {
+    if (hasSignal && previous?.hasSignal) elapsed += Math.min(50, now - previous.now);
+    previous = { now, hasSignal };
+    const progress = Math.min(1, elapsed / duration);
+    const eased = progress * progress * (3 - 2 * progress);
+    return { x: from[0] + (to[0] - from[0]) * eased, y: from[1] + (to[1] - from[1]) * eased, done: progress === 1 };
+  };
+}
+
+export function createValidationHold(previousOffset) {
+  const fixation = createFixationDetector();
+  return (offset, now) => {
+    const onPrevious = offset && previousOffset
+      && Math.hypot(offset[0] - previousOffset[0], offset[1] - previousOffset[1]) < 0.025;
+    if (!offset || onPrevious) { fixation.reset(); return false; }
+    return fixation.update(offset[0], offset[1], now).stableFor >= 450;
+  };
+}
+
 // Положення зіниць відносно кутів очей з точок facemesh (з iris-моделлю: 478 точок).
 // Повертає [x, y] у частках ширини ока або null, якщо зіниць немає.
 const IRIS = { left: 468, right: 473 };
@@ -54,22 +75,4 @@ export function snakeOrder(xs, ys) {
     for (const x of cols) out.push([x, y]);
   });
   return out;
-}
-
-// Порядок «навхрест»: кожна наступна точка — з протилежного боку від центру.
-// Великий стрибок погляду → зіниця помітно зміщується, тож детектор не «зараховує»
-// фіксацію, що лишилася від попередньої точки, а регресія отримує рознесені дані.
-// Частки екрана: зовнішнє коло (кути, середини сторін), центр, внутрішнє коло.
-export function crossOrder(W, H, { edge = [0.07, 0.1], inner = [0.3, 0.3] } = {}) {
-  const [ex, ey] = edge, [ix, iy] = inner;
-  const f = [
-    [ex, ey], [1 - ex, 1 - ey],        // лівий верхній → правий нижній
-    [1 - ex, ey], [ex, 1 - ey],        // правий верхній → лівий нижній
-    [0.5, ey], [0.5, 1 - ey],          // верх → низ
-    [ex, 0.5], [1 - ex, 0.5],          // ліво → право
-    [ix, iy], [1 - ix, 1 - iy],        // внутрішні діагоналі
-    [1 - ix, iy], [ix, 1 - iy],
-    [0.5, 0.5],                        // центр наприкінці
-  ];
-  return f.map(([a, b]) => [a * W, b * H]);
 }

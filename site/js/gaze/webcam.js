@@ -6,7 +6,6 @@ import { store } from '../core/store.js';
 import { startBlinkDetection, eyes } from './blink.js';
 import { runCalibration } from './calibration.js';
 
-const CALIB_KEY = 'eyeflow.calibrated';
 
 // --- усе локально: tfhub.dev/.../facemesh/.../model.json → lib/models/facemesh/model.json
 const realFetch = window.fetch.bind(window);
@@ -71,14 +70,12 @@ export async function startWebcam() {
   }
 }
 
-export const hasCalibration = () => localStorage.getItem(CALIB_KEY) === '1';
+export const hasCalibration = () => Boolean(window.webgazer?.getRegression()?.[0]?.getData().length);
 
 // Калібрування винесено у СПІЛЬНИЙ модуль js/gaze/calibration.js — він однаковий для всіх
-// додатків eye: гейт «обличчя в кадрі», точки навхрест, валідація на ОКРЕМИХ точках
+// додатків eye: гейт «обличчя в кадрі», плавний рух і валідація на окремих точках
 // і метрики якості (accuracy °, precision RMS-S2S °, частка валідних даних).
 // Повертає повний звіт; сумісність: поле accuracyPx замінює колишню «похибку в px».
 export async function calibrate() {
-  const report = await runCalibration({ onStatus: (text) => emit("cam-status", { text }) });
-  if (report.ok) localStorage.setItem(CALIB_KEY, "1");
-  return report;
+  return runCalibration({ onStatus: (text) => emit('cam-status', { text }) });
 }

@@ -142,11 +142,11 @@ async function applyMode() {
     if (!cam.ready && !(await prepareCameraPermission())) return;
     if (!cam.ready && !(await startWebcam())) return;
     if (store.settings.autoCalibrate) {
-      // A saved calibration is reused on reload; recalibrating is offered, not forced.
+      // Offer reuse only if WebGazer has a calibration model loaded.
       if (!hasCalibration()) return runCalibration();
       const again = await choose('Калібрувати знову?', [
         { label: 'Продовжити', icon: '✓', value: false, cls: 'ok', sub: 'Попереднє калібрування' },
-        { label: 'Калібрувати', icon: '🎯', value: true, sub: 'Приблизно хвилина' },
+        { label: 'Калібрувати', icon: '🎯', value: true, sub: 'Кружечок для стеження' },
       ], { cols: 2, cancel: false, subtitle: 'Якщо точка погляду влучає добре, можна одразу продовжити.' });
       if (again) runCalibration();
     }
