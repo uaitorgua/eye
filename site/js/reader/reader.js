@@ -79,10 +79,12 @@ export async function openReader() {
 async function openStandaloneMenu() {
   const a = await choose('☰ Меню', [
     { label: store.settings.mode === 'head' ? 'Центрувати голову' : 'Калібрувати', icon: '🎯', value: 'calib' },
+    { label: 'Спосіб керування', icon: '🔄', value: 'mode', sub: { webcam: 'Зараз: погляд', head: 'Зараз: голова', mouse: 'Зараз: миша' }[store.settings.mode] },
     { label: 'Налаштування', icon: '⚙', value: 'settings' },
     { label: 'Блок-схеми EyeFlow', icon: '🧩', value: 'eyeflow' },
   ], { cols: 2 });
   if (a === 'calib') emit('calibrate');
+  if (a === 'mode') emit('choose-mode');
   if (a === 'settings') (await import('../ui/settings.js')).openSettings();
   if (a === 'eyeflow') { saveNow(); location.href = 'index.html'; }
 }
@@ -125,7 +127,7 @@ function scrollLoop(now) {
 
 function setDotDim(dim) {
   const dot = $('gaze-dot');
-  if (dot) dot.style.opacity = dim ? '0.12' : '1';
+  if (dot) dot.style.opacity = dim ? '0.35' : '1';
 }
 
 function setHints(zone, ready) {

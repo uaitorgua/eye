@@ -19,7 +19,7 @@
 // Орієнтир: вебкамерний трекінг (WebGazer) реально дає близько 1–4° залежно від умов.
 // ─────────────────────────────────────────────────────────────────────────────
 import { eyes } from './blink.js';
-import { createFixationDetector, createTargetMotion, createValidationHold, irisOffset, snakeOrder } from './fixation.js';
+import { createFixationDetector, createTargetMotion, irisOffset, snakeOrder } from './fixation.js';
 
 export const GEO = { irisMm: 11.7, camFovDeg: 60, screenDiagIn: 15.6 };
 
@@ -81,6 +81,11 @@ const CSS = `
 .gz-dot.gz-val{background:radial-gradient(circle at 35% 32%,#cfe0ff,#5aa9ff 60%,#1e6bff 100%);
   box-shadow:0 0 22px 8px rgba(30,107,255,.45)}
 .gz-dot.gz-confirmed{outline:3px solid #cfe0ff;outline-offset:6px}
+/* Жовте кільце: куди, за оцінкою камери, зараз спрямований погляд (лише під час перевірки). */
+.gz-gaze{position:absolute;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;z-index:10007;
+  border:4px solid #ffd43b;box-shadow:0 0 0 2px rgba(11,21,38,.7),0 0 18px rgba(255,212,59,.6);pointer-events:none;will-change:transform}
+.gz-gaze::after{content:'';position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:#ffd43b}
+.gz-bar b{color:#ffd43b;font-weight:700}
 body:has(.gz-cal) #gaze-dot{visibility:hidden}
 .gz-bar{position:absolute;left:0;right:0;bottom:28px;text-align:center;color:#8fa6c8;font-size:.95rem}
 .gz-cancel{position:absolute;top:18px;right:18px;z-index:10011;padding:12px 20px;border-radius:14px;cursor:pointer;
@@ -222,46 +227,41 @@ async function collectPoint(dot, x, y, prevOff, readFace, cancelled) {
 
 // ── 3. Вимірювання якості в одній точці ─────────────────────────────────────
 // accuracy — середнє відхилення від цілі; precision — RMS між сусідніми семплами.
-async function measurePoint(dot, x, y, readFace, previous, cancelled) {
-  const irisHold = createValidationHold(previous?.iris);
-  const predictionHold = createValidationHold(previous?.prediction);
+// Відбір за ЧАСОМ, а не за «стабільністю» прогнозу: погляд з вебкамери тремтить на десятки
+// й сотні пікселів, тож умова «прогноз нерухомий» не виконується ніколи, і перевірка зависала.
+// Лічильник часу йде лише поки камера бачить обличчя з розплющеними очима.
+const VAL_SETTLE_MS = 900, VAL_SAMPLE_MS = 1300, VAL_MIN_SAMPLES = 6;
+async function measurePoint(dot, x, y, readFace, cancelled, onGaze) {
   const pts = [];
-  let expected = 0, validCount = 0, last = null, sampleStart = null;
-  const start = performance.now();
-  while (performance.now() - start < MAX_POINT_MS && !cancelled()) {
+  let expected = 0, faceMs = 0, prevT = performance.now();
+  const start = prevT;
+  while (!cancelled() && performance.now() - start < MAX_POINT_MS) {
     const face = readFace();
     const p = face ? await wg().getCurrentPrediction() : null;
     const now = performance.now();
-    const valid = p && Number.isFinite(p.x) && Number.isFinite(p.y) && readFace();
-    const iris = valid ? irisOffset(positions()) : null;
-    const prediction = valid ? [p.x / innerWidth, p.y / innerHeight] : null;
-    // Distance from the target is measured after the hold, never used to accept samples.
-    const held = iris ? irisHold(iris, now) : predictionHold(prediction, now);
-    if (held || expected > 0) {
+    const valid = !!p && Number.isFinite(p.x) && Number.isFinite(p.y);
+    if (face) faceMs += Math.min(100, now - prevT);
+    prevT = now;
+    if (valid && onGaze) onGaze(p.x, p.y);
+    const sampling = faceMs >= VAL_SETTLE_MS;      // перші 0,9 с — час перевести погляд на точку
+    dot.classList.toggle('gz-confirmed', sampling);
+    if (sampling) {
       expected++;
-      if (valid) validCount++;
+      if (valid) pts.push([p.x, p.y]);
     }
-    if (!held) {
-      pts.length = 0;
-      sampleStart = null;
-    } else {
-      sampleStart ??= now;
-      if (valid) { pts.push([p.x, p.y]); last = { iris, prediction }; }
-      if (pts.length >= 8 && now - sampleStart >= 700) break;
-    }
-    dot.classList.toggle('gz-confirmed', held);
+    if (faceMs >= VAL_SETTLE_MS + VAL_SAMPLE_MS) break;
     await wait(SAMPLE_MS);
   }
   dot.classList.remove('gz-confirmed');
-  if (pts.length < 8 || performance.now() - sampleStart < 700) return null;
-  const errs = pts.map(p => Math.hypot(p[0] - x, p[1] - y));
-  const accuracyPx = errs.reduce((a, b) => a + b, 0) / errs.length;
+  if (pts.length < VAL_MIN_SAMPLES) return null;
+  const errs = pts.map(q => Math.hypot(q[0] - x, q[1] - y));
+  const accuracyPx = errs.reduce((m, v) => m + v, 0) / errs.length;
   let s2s = 0;
   for (let i = 1; i < pts.length; i++) {
     s2s += Math.pow(pts[i][0] - pts[i - 1][0], 2) + Math.pow(pts[i][1] - pts[i - 1][1], 2);
   }
   const precisionPx = Math.sqrt(s2s / (pts.length - 1));
-  return { point: { x, y, valid: validCount / expected, accuracyPx, precisionPx, n: pts.length, expected }, last };
+  return { x, y, valid: pts.length / expected, accuracyPx, precisionPx, n: pts.length, expected };
 }
 
 // ── 4. Повний цикл ──────────────────────────────────────────────────────────
@@ -360,22 +360,36 @@ export async function runCalibration(opts) {
     // Валідація на ОКРЕМИХ точках (їх не було серед калібрувальних).
     const vpFrac = [[0.78, 0.73], [0.22, 0.73], [0.48, 0.6], [0.22, 0.3], [0.78, 0.3]];
     dot.classList.add('gz-val');
-    const points = [];
-    const startPrediction = await g.getCurrentPrediction();
-    let last = {
-      iris: prevOff,
-      prediction: startPrediction ? [startPrediction.x / W, startPrediction.y / H] : null,
+    // Під час перевірки показуємо, куди модель «бачить» погляд: і людині, і помічнику
+    // одразу видно, чи калібрування вдалося, а не лише число наприкінці.
+    const gaze = document.createElement('div');
+    gaze.className = 'gz-gaze';
+    gaze.setAttribute('aria-hidden', 'true');
+    gaze.hidden = true;
+    ov.appendChild(gaze);
+    let mx = null, my = null;
+    const onGaze = (px, py) => {
+      mx = mx == null ? px : mx * 0.7 + px * 0.3;
+      my = my == null ? py : my * 0.7 + py * 0.3;
+      gaze.hidden = false;
+      gaze.style.transform = 'translate(' + Math.max(0, Math.min(W, mx)).toFixed(1) + 'px,' + Math.max(0, Math.min(H, my)).toFixed(1) + 'px)';
     };
+    const points = [];
+    let feedback = '';
     for (let i = 0; i < vpFrac.length; i++) {
       status('Перевірка ' + (i + 1) + '/' + vpFrac.length);
-      bar.textContent = 'Переведи погляд на синій кружечок і затримай його · ' + (i + 1) + ' / ' + vpFrac.length;
+      bar.innerHTML = 'Дивись на синій кружечок. <b>Жовте кільце</b> показує, куди, за оцінкою камери, ти дивишся · '
+        + (i + 1) + ' / ' + vpFrac.length + feedback;
       const target = [vpFrac[i][0] * W, vpFrac[i][1] * H];
       if (!await moveTo(target)) return interrupted();
-      const result = await measurePoint(dot, ...target, readFace, last, stopped);
+      const point = await measurePoint(dot, ...target, readFace, stopped, onGaze);
       if (stopped()) return interrupted();
-      if (!result) return { ok: false, error: 'Не вдалося зафіксувати погляд на синій точці. Спробуйте ще раз.' };
-      points.push(result.point);
-      last = result.last;
+      // Одна невдала точка (кліпання, відвів погляд) не скасовує все калібрування.
+      if (point) points.push(point);
+      feedback = point ? ' · попередня точка: промах ≈ ' + Math.round(point.accuracyPx) + ' px' : ' · попередню точку не вдалося виміряти';
+    }
+    if (!points.length) {
+      return { ok: false, error: 'Не вдалося виміряти точність: камера не бачила очей на синіх точках. Додайте світла на обличчя і спробуйте ще раз.' };
     }
 
     const geoNow = geometry(positions(), geo);

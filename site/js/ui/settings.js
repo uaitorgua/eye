@@ -47,6 +47,7 @@ export function openSettings() {
         h('div', { class: 'stepper-value' }, st.fmt(s[st.key])), plus);
     });
     const toggles = [
+      control({ webcam: 'Режим: погляд', head: 'Режим: голова' }[s.mode] || 'Режим: миша', () => { m.close(); emit('choose-mode'); }, 'mode', { icon: '🔄' }),
       control(s.autoCalibrate ? 'Автокалібр.: так' : 'Автокалібр.: ні', () => { updateSettings({ autoCalibrate: !s.autoCalibrate }); render(); }, 'autoCalibrate', { icon: '🎯' }),
       control('Клік: ' + CLICK_MODES[s.clickMode], () => {
         const keys = Object.keys(CLICK_MODES);
@@ -58,7 +59,6 @@ export function openSettings() {
       control(s.lang === 'uk' ? 'Мова: Укр' : 'Мова: Eng', () => { updateSettings({ lang: s.lang === 'uk' ? 'en' : 'uk' }); render(); }, 'lang', { icon: '🌐' }),
       control(s.sound ? 'Звук: так' : 'Звук: ні', () => { updateSettings({ sound: !s.sound }); render(); }, 'sound', { icon: '🔔' }),
       control(s.showDot ? 'Точка: так' : 'Точка: ні', () => { updateSettings({ showDot: !s.showDot }); render(); }, 'showDot', { icon: '📍' }),
-      control({ webcam: 'Режим: погляд', head: 'Режим: голова' }[s.mode] || 'Режим: миша', () => { m.close(); emit('choose-mode'); }, 'mode', { icon: '🔄' }),
       ...(s.mode === 'webcam' ? [
         control('Калібрувати', () => { m.close(); emit('calibrate'); }, 'calibrate', { icon: '🎯' }),
         control('Камера', () => { m.close(); emit('choose-camera'); }, 'camera', { icon: '📷' }),

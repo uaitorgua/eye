@@ -29,8 +29,8 @@ class Element extends EventTarget {
   remove() { this.isConnected = false; }
 }
 
-async function simulateCalibration({ cancelAtCheck = false, neverFollow = false } = {}) {
-  let now = 0, faceTime, face, phaseStart = null, previousPrediction;
+async function simulateCalibration({ cancelAtCheck = false, prediction = 'follow' } = {}) {
+  let now = 0, faceTime, face, phaseStart = null, tick = 0;
   const checks = [];
   class Regression {
     samples = [];
@@ -52,9 +52,11 @@ async function simulateCalibration({ cancelAtCheck = false, neverFollow = false 
     showVideoPreview() {},
     recordScreenPosition(x, y) { regressions[0].samples.push([x, y]); },
     async getCurrentPrediction() {
-      if (phaseStart !== null && (neverFollow || now - phaseStart < 4000)) return previousPrediction;
+      if (prediction === 'none') return null;
       const dot = target();
-      return previousPrediction = { x: parseFloat(dot.style.left) + 90, y: parseFloat(dot.style.top) + 40 };
+      // 'jitter': webcam gaze is never still. It swings ±150 px around a point 90/40 px off the target.
+      const swing = prediction === 'jitter' ? (tick++ % 2 ? 150 : -150) : 0;
+      return { x: parseFloat(dot.style.left) + 90 + swing, y: parseFloat(dot.style.top) + 40 };
     },
   };
   const globals = {
@@ -90,20 +92,31 @@ async function simulateCalibration({ cancelAtCheck = false, neverFollow = false 
   }
 }
 
-test('blue points wait for a new fixation and measure a stable off-target prediction honestly', async () => {
+test('blue points give the eyes time to arrive, then measure an off-target prediction honestly', async () => {
   const { report, checks, model, previousModel } = await simulateCalibration();
   assert.equal(report.ok, true);
   assert.equal(report.points.length, 5);
   assert.equal(checks.length, 4);
-  assert.ok(checks.every(duration => duration >= 4000));
+  assert.ok(checks.every(duration => duration >= 2200 && duration < 4000), checks.join());
   assert.ok(Math.abs(report.accuracyPx - Math.hypot(90, 40)) < 0.01);
+  assert.equal(report.validPct, 100);
   assert.notEqual(model, previousModel);
 });
 
-test('a stationary prediction times out without accepting calibration or replacing the previous model', async () => {
-  const { report, model, previousModel, overlay } = await simulateCalibration({ neverFollow: true });
+test('a jittery prediction still completes validation instead of waiting for a stable gaze forever', async () => {
+  const { report, checks, model, previousModel } = await simulateCalibration({ prediction: 'jitter' });
+  assert.equal(report.ok, true);
+  assert.equal(report.points.length, 5);
+  assert.ok(checks.every(duration => duration < 4000), checks.join());
+  assert.ok(report.accuracyPx > 60 && report.accuracyPx < 260, String(report.accuracyPx));
+  assert.ok(report.precisionPx > 250, 'jitter shows up as poor precision, not as a failed calibration');
+  assert.notEqual(model, previousModel);
+});
+
+test('no gaze predictions at all rejects the calibration and keeps the previous model', async () => {
+  const { report, model, previousModel, overlay } = await simulateCalibration({ prediction: 'none' });
   assert.equal(report.ok, false);
-  assert.match(report.error, /синій точці/);
+  assert.match(report.error, /синіх точках/);
   assert.equal(model, previousModel);
   assert.equal(overlay.isConnected, false);
 });
