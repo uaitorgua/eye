@@ -5,6 +5,7 @@ import { registerHooks } from 'node:module';
 class Element extends EventTarget {
   constructor(tag, attrs = {}, children = []) {
     super(); this.tag = tag; this.attrs = attrs; this.children = children.flat();
+    this.dataset = {}; this.style = { setProperty() {} };
     this.classList = { add() {}, remove() {}, toggle() {}, contains: cls => (this.attrs.class || '').split(' ').includes(cls) };
   }
   append(...children) { this.children.push(...children); }
@@ -15,7 +16,7 @@ class Element extends EventTarget {
   contains(node) { return this === node || descendants(this).includes(node); }
   querySelectorAll(selector) { return descendants(this).filter(node => node.classList.contains(selector.slice(1))); }
   querySelector(selector) {
-    if (selector === '.rd-rail' || selector === '.tile-label') return new Element('span');
+    if (selector === '.rd-rail' || selector === '.tile-label' || selector === '.rd-band-label') return new Element('span');
     const options = selector.split(',').map(value => value.trim());
     return descendants(this).find(node => options.some(option => {
       const cls = option.match(/^\.([\w-]+)/)?.[1];

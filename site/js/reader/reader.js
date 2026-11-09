@@ -16,6 +16,8 @@ const $ = (id) => document.getElementById(id);
 
 let view, section, currentId = null, gx = -1, gy = -1, pointerAt = -Infinity, saveTimer, libraryModal;
 const scroller = createEdgeScroller();
+// Тло сторінок: звичайне, тепле (менше відблиску) і темне (для чутливих до яскравого світла).
+const THEMES = { paper: 'Тло: біле', sepia: 'Тло: тепле', dark: 'Тло: темне' };
 
 // standalone: окрема сторінка reader.html — «Вихід» стає «Меню» (калібрування, налаштування, перехід у EyeFlow).
 let standalone = false;
@@ -38,11 +40,17 @@ export function initReader({ standalone: alone = false } = {}) {
   bind('rd-next', () => view.goToPage(view.position().page + 1));
   bind('rd-auto', () => updateSettings({ readerAutoScroll: !store.settings.readerAutoScroll }));
   bind('rd-pause', () => emit('toggle-pause'));
-  $('rd-hint-top').addEventListener('click', () => viewEl.scrollBy(0, -viewEl.clientHeight * 0.8));
-  $('rd-hint-bottom').addEventListener('click', () => viewEl.scrollBy(0, viewEl.clientHeight * 0.8));
+  bind('rd-theme', () => {
+    const keys = Object.keys(THEMES);
+    updateSettings({ readerTheme: keys[(Math.max(0, keys.indexOf(store.settings.readerTheme)) + 1) % keys.length] });
+  });
+  const step = (dir) => viewEl.scrollBy({ top: dir * viewEl.clientHeight * 0.8,
+    behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  $('rd-hint-top').addEventListener('click', () => step(-1));
+  $('rd-hint-bottom').addEventListener('click', () => step(1));
   bind('rd-more', () => {
     const more = section.querySelector('.rd-rail').classList.toggle('more');
-    $('rd-more').querySelector('.tile-label').textContent = more ? 'Назад до читання' : 'Ще';
+    $('rd-more').querySelector('.tile-label').textContent = more ? 'Готово' : 'Ще';
   });
   on('settings-changed', renderBar);
   on('pause-changed', renderBar);
@@ -121,8 +129,14 @@ function setDotDim(dim) {
 }
 
 function setHints(zone, ready) {
+  // Смуга наповнюється, поки триває затримка перед рухом, а синє світіння заходить на текст —
+  // так видно, що прокрутка зараз почнеться і в який бік.
   for (const z of ['top', 'bottom']) {
-    $('rd-hint-' + z).style.setProperty('--scroll-progress', zone === z ? 0.12 + 0.88 * ready : 0);
+    const on = zone === z;
+    const band = $('rd-hint-' + z);
+    band.style.setProperty('--scroll-progress', on ? (0.12 + 0.88 * ready).toFixed(2) : 0);
+    band.classList.toggle('scrolling', on && ready >= 1);
+    $('rd-glow-' + z).style.opacity = on ? (0.2 + 0.8 * ready).toFixed(2) : 0;
   }
   for (const z of ['left', 'right']) {
     const hint = $('rd-hint-' + z);
@@ -135,9 +149,21 @@ function onViewChange() {
   if (!view.doc) return;
   const { page } = view.position();
   $('rd-page').textContent = `стор. ${page} з ${view.pageCount}`;
+  // Смужка прогресу під назвою і стан смуг на початку/в кінці книги.
+  const el = $('reader-view'), max = el.scrollHeight - el.clientHeight;
+  section.style.setProperty('--read-progress', max > 0 ? Math.min(1, el.scrollTop / max).toFixed(4) : 0);
+  setBandEnd('top', max <= 0 || el.scrollTop <= 1, 'Початок', 'Вгору');
+  setBandEnd('bottom', max <= 0 || el.scrollTop >= max - 1, 'Кінець книги', 'Вниз');
   $('rd-fit').querySelector('.tile-label').textContent = view.zoom === 1 ? 'По ширині' : Math.round(view.zoom * 100) + '%';
   clearTimeout(saveTimer);
   saveTimer = setTimeout(saveNow, 800);
+}
+
+function setBandEnd(z, atEnd, endLabel, label) {
+  const band = $('rd-hint-' + z);
+  if (band.classList.contains('at-end') === atEnd) return;
+  band.classList.toggle('at-end', atEnd);
+  band.querySelector('.rd-band-label').textContent = atEnd ? endLabel : label;
 }
 
 function saveNow() {
@@ -151,6 +177,9 @@ function renderBar() {
   $('rd-auto').classList.toggle('active', s.readerAutoScroll);
   $('rd-auto').setAttribute('aria-pressed', s.readerAutoScroll);
   $('rd-pause').querySelector('.tile-label').textContent = store.paused ? 'Продовжити' : 'Пауза';
+  const theme = THEMES[s.readerTheme] ? s.readerTheme : 'paper';
+  section.dataset.theme = theme;
+  $('rd-theme').querySelector('.tile-label').textContent = THEMES[theme];
 }
 
 // ---------- книги ----------

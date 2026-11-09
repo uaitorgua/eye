@@ -20,6 +20,7 @@ export const DEFAULT_SETTINGS = {
   voiceEnabled: true,  // автоозвучка (TTS)
   lang: 'uk',          // мова озвучки ('uk' або 'en')
   readerAutoScroll: true, // читанка: прокрутка поглядом біля верхнього/нижнього краю
+  readerTheme: 'paper', // читанка: тло сторінок — 'paper' | 'sepia' | 'dark'
   readerScrollSpeed: 350,  // її найбільша швидкість, px/с
   runSpeedMs: 900,     // пауза між кроками при запуску
   autoCalibrate: true, // калібрувати при кожному запуску

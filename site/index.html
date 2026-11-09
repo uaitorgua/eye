@@ -9,10 +9,10 @@
 <link rel="stylesheet" href="css/flowchart.css?v=20261105c">
 <link rel="stylesheet" href="css/modals.css?v=20261105c">
 <link rel="stylesheet" href="css/tetris.css?v=20261105c">
-<link rel="stylesheet" href="css/reader.css?v=20261109">
+<link rel="stylesheet" href="css/reader.css?v=20261109b">
 <link rel="stylesheet" href="css/browser.css?v=20261105c">
 <link rel="stylesheet" href="css/relax.css?v=20261105c">
-<link rel="stylesheet" href="css/system.css?v=20261105c">
+<link rel="stylesheet" href="css/system.css?v=20261109b">
 <script src="lib/webgazer.js"></script>
 </head>
 <body>
@@ -110,25 +110,27 @@
 <!-- Читанка PDF: повноекранний шар. Логіка — js/reader/reader.js -->
 <section id="reader-section" class="hidden" data-layer>
   <div class="rd-main">
-    <button class="rd-scroll-band rd-scroll-up" id="rd-hint-top" type="button" aria-label="Прокрутити вгору" data-gaze-scroll="top">↑ Вгору</button>
+    <button class="rd-scroll-band rd-scroll-up" id="rd-hint-top" type="button" aria-label="Прокрутити вгору" data-gaze-scroll="top"><span class="rd-band-pill"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/chevrons-up.svg)"></span><span class="rd-band-label">Вгору</span></span></button>
     <div class="rd-reading" data-gaze-scroll>
       <div class="rd-top"><span id="rd-title">Книги</span><span id="rd-page"></span></div>
       <div id="reader-view" tabindex="0" aria-label="Сторінки PDF"><div id="reader-pages"></div></div>
+      <div class="rd-hint" id="rd-glow-top"></div><div class="rd-hint" id="rd-glow-bottom"></div>
       <div class="rd-hint" id="rd-hint-left"></div><div class="rd-hint" id="rd-hint-right"></div>
     </div>
     <nav class="rd-rail" aria-label="Керування читанням">
-      <button class="tile" id="rd-exit" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/arrow-left.svg)"></span></span><span class="tile-label">Вихід</span></button>
       <button class="tile" id="rd-pause" data-dwell data-dwell-always><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/pause.svg)"></span></span><span class="tile-label">Пауза</span></button>
+      <button class="tile" id="rd-exit" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/arrow-left.svg)"></span></span><span class="tile-label">Вихід</span></button>
       <button class="tile" id="rd-library" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/library.svg)"></span></span><span class="tile-label">Книги</span></button>
       <button class="tile" id="rd-prev" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/chevrons-up.svg)"></span></span><span class="tile-label">Назад</span></button>
       <button class="tile" id="rd-next" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/chevrons-down.svg)"></span></span><span class="tile-label">Далі</span></button>
-      <button class="tile rd-more" id="rd-more" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/ellipsis.svg)"></span></span><span class="tile-label">Ще</span></button>
       <button class="tile" id="rd-zoom-out" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/zoom-out.svg)"></span></span><span class="tile-label">Менше</span></button>
       <button class="tile" id="rd-fit" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/move-horizontal.svg)"></span></span><span class="tile-label">По ширині</span></button>
       <button class="tile" id="rd-zoom-in" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/zoom-in.svg)"></span></span><span class="tile-label">Більше</span></button>
       <button class="tile" id="rd-auto" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/eye.svg)"></span></span><span class="tile-label">Прокрутка</span></button>
+      <button class="tile" id="rd-theme" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/lightbulb.svg)"></span></span><span class="tile-label">Тло</span></button>
+      <button class="tile rd-more" id="rd-more" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/ellipsis.svg)"></span></span><span class="tile-label">Ще</span></button>
     </nav>
-    <button class="rd-scroll-band rd-scroll-down" id="rd-hint-bottom" type="button" aria-label="Прокрутити вниз" data-gaze-scroll="bottom">↓ Вниз</button>
+    <button class="rd-scroll-band rd-scroll-down" id="rd-hint-bottom" type="button" aria-label="Прокрутити вниз" data-gaze-scroll="bottom"><span class="rd-band-pill"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/chevrons-down.svg)"></span><span class="rd-band-label">Вниз</span></span></button>
   </div>
 </section>
 
