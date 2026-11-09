@@ -54,6 +54,10 @@ export class PdfView {
   get pageCount() { return this.doc?.numPages || 0; }
   fitScale() { return Math.max(0.1, (this.view.clientWidth - PAD * 2) / this.base.width); }
   get scale() { return this.fitScale() * this.zoom; }
+  // Кожна сторінка вписується по ширині окремо: обкладинка чи розворот іншого розміру
+  // не розтягують стрічку вбік і не зсувають решту сторінок.
+  scaleFor(s) { return Math.max(0.1, (this.view.clientWidth - PAD * 2) / s.w) * this.zoom; }
+  size(s) { const sc = this.scaleFor(s); s.el.style.width = Math.floor(s.w * sc) + 'px'; s.el.style.height = Math.floor(s.h * sc) + 'px'; }
   get canScrollX() { return this.pagesEl.scrollWidth > this.view.clientWidth + 2; }
 
   // Позиція читання: сторінка + частка її висоти на верхньому краї екрана.
@@ -76,11 +80,7 @@ export class PdfView {
     const pos = this.position();
     const cx = (this.view.scrollLeft + this.view.clientWidth / 2) / Math.max(1, this.pagesEl.scrollWidth);
     this.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(zoom * 100) / 100));
-    const sc = this.scale;
-    for (const s of this.slots) {
-      s.el.style.width = Math.floor(s.w * sc) + 'px';
-      s.el.style.height = Math.floor(s.h * sc) + 'px';
-    }
+    for (const s of this.slots) this.size(s);
     this.setPosition(pos);
     this.view.scrollLeft = cx * this.pagesEl.scrollWidth - this.view.clientWidth / 2;
     this.scheduleRender();
@@ -97,28 +97,27 @@ export class PdfView {
   }
 
   async renderVisible() {
-    const sc = this.scale;
     for (const s of this.slots) {
       if (!s.el._visible) {
         // далекі сторінки звільняємо, щоб не забивати пам'ять на великих підручниках
         if (s.canvas) { s.task?.cancel(); s.canvas.remove(); s.canvas = null; s.rendered = 0; }
         continue;
       }
-      if (Math.abs(s.rendered - sc) < 0.001) continue;
-      this.renderSlot(s, sc);
+      if (s.page && Math.abs(s.rendered - this.scaleFor(s)) < 0.001) continue;
+      this.renderSlot(s);
     }
   }
 
-  async renderSlot(s, sc) {
+  async renderSlot(s) {
     try {
       s.task?.cancel();
       s.page ||= await this.doc.getPage(+s.el.dataset.page);
       const vp1 = s.page.getViewport({ scale: 1 });
       if (vp1.width !== s.w || vp1.height !== s.h) {      // сторінка іншого розміру
         s.w = vp1.width; s.h = vp1.height;
-        s.el.style.width = Math.floor(s.w * sc) + 'px';
-        s.el.style.height = Math.floor(s.h * sc) + 'px';
+        this.size(s);
       }
+      const sc = this.scaleFor(s);
       const vp = s.page.getViewport({ scale: sc });
       let dpr = window.devicePixelRatio || 1;
       if (vp.width * vp.height * dpr * dpr > MAX_CANVAS_PIXELS) dpr = Math.sqrt(MAX_CANVAS_PIXELS / (vp.width * vp.height));
