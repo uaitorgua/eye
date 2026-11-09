@@ -78,7 +78,7 @@ export async function openReader() {
 
 async function openStandaloneMenu() {
   const a = await choose('☰ Меню', [
-    { label: 'Калібрувати', icon: '🎯', value: 'calib' },
+    { label: store.settings.mode === 'head' ? 'Центрувати голову' : 'Калібрувати', icon: '🎯', value: 'calib' },
     { label: 'Налаштування', icon: '⚙', value: 'settings' },
     { label: 'Блок-схеми EyeFlow', icon: '🧩', value: 'eyeflow' },
   ], { cols: 2 });
@@ -103,7 +103,7 @@ function scrollLoop(now) {
   const dt = Math.min(0.1, (now - prev) / 1000); prev = now;
   const active = !section.classList.contains('hidden') && view.doc && store.settings.readerAutoScroll
     && !store.paused && !eyes.closed && !document.hidden
-    && (store.settings.mode !== 'webcam' || now - pointerAt < 500)
+    && (store.settings.mode === 'mouse' || now - pointerAt < 500)
     && !document.querySelector('#modal-layer > .modal, [data-gaze-block]');
   const el = $('reader-view');
   if (!active || gx < 0) { scroller.reset(); setHints(null, 0); setDotDim(false); return; }

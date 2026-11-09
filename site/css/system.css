@@ -191,3 +191,20 @@ html, body { background: var(--paper); color: var(--ink); font-family: var(--fon
   .tile, .home-arrow, .choice .grid .tile::before { transition: none; }
   .dwell-fired, .tile.dwell-focus { animation: none !important; transform: none !important; }
 }
+
+/* ---------- Head-pointing centring screen ---------- */
+.head-centre { position: fixed; inset: 0; z-index: 10005; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: clamp(10px, 2vh, 20px); padding: 24px; text-align: center; background: rgba(247, 244, 236, .96); color: var(--ink, #152440); }
+.head-centre-ring { --p: 0; position: relative; display: grid; place-items: center; width: clamp(120px, 22vh, 190px); aspect-ratio: 1; border-radius: 50%;
+  background: conic-gradient(var(--blue, #1856d8) calc(var(--p) * 360deg), var(--line, #e3ddd0) 0); transition: background .1s linear; }
+.head-centre-ring::before { content: ''; position: absolute; inset: 9px; border-radius: 50%; background: var(--card, #fffdf8); }
+.head-centre-face { position: relative; width: 46%; aspect-ratio: 1; background: var(--blue, #1856d8);
+  -webkit-mask: url(../assets/icons/scan-face.svg) center / contain no-repeat; mask: url(../assets/icons/scan-face.svg) center / contain no-repeat; }
+.head-centre-title { margin: 0; font: 700 clamp(24px, 3.4vw, 40px)/1.12 var(--font-display, Georgia, serif); letter-spacing: -.02em; }
+.head-centre-msg { margin: 0; min-height: 1.4em; color: var(--ink-2, #46536c); font-size: clamp(16px, 1.8vw, 22px); }
+.head-centre-cancel { margin-top: 8px; padding: 10px 18px; border: 2px dashed var(--line-strong, #c9c1ae); border-radius: 12px; background: transparent;
+  color: var(--ink-2, #46536c); font: 600 16px var(--font-ui, system-ui, sans-serif); cursor: pointer; }
+.head-centre-cancel:hover, .head-centre-cancel:focus-visible { border-color: var(--blue, #1856d8); color: var(--ink, #152440); outline: none; }
+.head-centre.done .head-centre-ring { background: var(--green, #1f7a4f); }
+.head-centre.done .head-centre-face { background: var(--green, #1f7a4f); -webkit-mask-image: url(../assets/icons/check.svg); mask-image: url(../assets/icons/check.svg); }
+.head-centre.done .head-centre-cancel { visibility: hidden; }

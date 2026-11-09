@@ -9,6 +9,7 @@ import { startWebcam, calibrate, cam, cameraPermission, hasCalibration, SITE_BLO
 import { choose } from '../ui/modal.js';
 import { toast } from '../ui/dom.js';
 import { onDrift, resetDrift } from './drift.js';
+import { startHead, recenterHead } from './head.js';
 
 let els = {};
 
@@ -45,6 +46,11 @@ export function initGazeSession(elements = {}) {
 }
 
 async function runCalibration() {
+  // У режимі голови «калібрування» — це центрування: подивитись прямо на екран.
+  if (store.settings.mode === 'head') {
+    if (!cam.ready && !((await prepareCameraPermission()) && (await startWebcam()))) return;
+    return recenterHead();
+  }
   if (store.settings.mode !== 'webcam') return toast('Калібрування потрібне лише в режимі камери');
   if (!cam.ready && !((await prepareCameraPermission()) && (await startWebcam()))) return;
   const r = await calibrate();
@@ -89,8 +95,9 @@ async function runCalibration() {
 async function chooseMode() {
   const mode = await choose('Як керувати?', [
     { label: 'Очима через вебкамеру', icon: '📷', value: 'webcam', sub: 'WebGazer, потрібне калібрування' },
+    { label: 'Рухами голови', icon: '🙂', value: 'head', sub: 'Вебкамера стежить за поворотом голови, без калібрування' },
     { label: 'Миша або трекер очей', icon: '🖱', value: 'mouse', sub: 'Tobii / Windows Eye Control рухають курсор' },
-  ], { cols: 2, cancel: false, subtitle: 'Обирає дорослий. Змінити можна будь-коли в налаштуваннях.' });
+  ], { cols: 3, cancel: false, subtitle: 'Обирає дорослий. Змінити можна будь-коли в налаштуваннях.' });
   updateSettings({ mode });
   applyMode();
 }
@@ -105,7 +112,7 @@ async function chooseCamera() {
     })), { cols: 1 });
     if (!id) return;
     updateSettings({ cameraId: id });
-    if (store.settings.mode === 'webcam') {
+    if (store.settings.mode !== 'mouse') {
       // WebGazer не вміє змінити камеру на льоту — перезавантажуємо сторінку.
       cam.ready = false;
       toast('Налаштування збережено. Перезапуск...', 2000);
@@ -137,7 +144,14 @@ async function prepareCameraPermission() {
 
 async function applyMode() {
   document.body.dataset.mode = store.settings.mode;
-  if (store.settings.mode === 'webcam') {
+  if (store.settings.mode === 'head') {
+    if (els.calibBtn) els.calibBtn.hidden = false;
+    if (!cam.ready && !(await prepareCameraPermission())) return;
+    if (!cam.ready && !(await startWebcam())) return;
+    startHead();
+    emit('cam-status', { text: 'Режим: рухи голови', ok: true });
+    if (!(await recenterHead())) toast('Центрування пропущено. Запустіть його в Налаштуваннях → «Центрувати голову».', 7000);
+  } else if (store.settings.mode === 'webcam') {
     if (els.calibBtn) els.calibBtn.hidden = false;
     if (!cam.ready && !(await prepareCameraPermission())) return;
     if (!cam.ready && !(await startWebcam())) return;
