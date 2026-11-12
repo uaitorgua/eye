@@ -35,7 +35,7 @@ const tick = t => { now = t; frame(t); };
 const { store } = await import('../site/js/core/store.js');
 const { initDwell } = await import('../site/js/gaze/dwell.js');
 
-test('buttons under the calibration overlay cannot be activated by gaze or click', () => {
+test('calibration blocks background buttons and the reader scroll strips clear pending dwell', () => {
   Object.assign(store.settings, { mode: 'webcam', sound: false, clickMode: 'dwell', dwellMs: 1000 });
   const button = new Target();
   let fired = 0;
@@ -52,4 +52,12 @@ test('buttons under the calibration overlay cannot be activated by gaze or click
   document.blocked = false;
   tick(3100); tick(3400); tick(4500);
   assert.equal(fired, 1, 'the page works again once calibration ends');
+
+  const nearby = new Target();
+  nearby.addEventListener('dwell', () => fired++);
+  document.target = nearby;
+  tick(5600);
+  document.target = { closest: selector => selector === '[data-gaze-scroll]' ? document.target : null };
+  tick(6600);
+  assert.equal(fired, 1, 'entering a scroll strip clears the old target immediately');
 });

@@ -7,7 +7,9 @@ const KEY_SETTINGS = 'eyeflow.settings';
 const KEY_SLOT = (n) => 'eyeflow.slot.' + n;
 
 export const DEFAULT_SETTINGS = {
-  mode: null,          // 'webcam' | 'mouse' (миша або апаратний трекер, що рухає курсор)
+  mode: null,          // 'webcam' (погляд) | 'head' (рухи голови) | 'mouse' (миша або апаратний трекер, що рухає курсор)
+  headSensitivity: 1,  // режим голови: 1 = край екрана при повороті ≈12°; більше — менші рухи
+  headMirror: false,   // режим голови: дзеркальний напрямок (якщо камера віддає відбите зображення)
   cameraId: null,      // ідентифікатор обраної камери
   dwellMs: 2000,       // скільки дивитися, щоб «натиснути» (1,2 с виявилось замало — випадкові кліки)
   smoothing: 0.75,     // 0 — без згладжування, 0.95 — дуже плавно
@@ -20,9 +22,11 @@ export const DEFAULT_SETTINGS = {
   voiceEnabled: true,  // автоозвучка (TTS)
   lang: 'uk',          // мова озвучки ('uk' або 'en')
   readerAutoScroll: true, // читанка: прокрутка поглядом біля верхнього/нижнього краю
+  readerTheme: 'paper', // читанка: тло сторінок — 'paper' | 'sepia' | 'dark'
   readerScrollSpeed: 350,  // її найбільша швидкість, px/с
   runSpeedMs: 900,     // пауза між кроками при запуску
   autoCalibrate: true, // калібрувати при кожному запуску
+  eyesStop: true,      // заплющені на 3 с очі зупиняють калібрування / центрування
   breakReminderMin: 20, // нагадування про перерву для очей, хв (0 — вимкнено)
   settingsVersion: 2,  // версія схеми налаштувань — для міграцій у migrate()
 };

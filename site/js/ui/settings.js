@@ -16,6 +16,7 @@ const STEPPERS = [
   { key: 'readerScrollSpeed', label: 'Прокрутка книги', step: 50, min: 100, max: 1200, fmt: v => v + ' px/с' },
   { key: 'smoothing', label: 'Плавність', step: 0.05, min: 0, max: 0.95, fmt: v => Math.round(v * 100) + '%' },
   { key: 'snap', label: 'Магніт', step: 10, min: 0, max: 200, fmt: v => v + ' px' },
+  { key: 'headSensitivity', label: 'Чутливість голови', step: 0.1, min: 0.5, max: 2.5, fmt: v => Math.round(v * 100) + '%' },
   { key: 'breakReminderMin', label: 'Нагадування про перерву', step: 5, min: 0, max: 60, fmt: v => v ? v + ' хв' : 'вимк' },
   { key: 'zoom', label: 'Масштаб схеми', step: 0.1, min: 0.5, max: 2, fmt: v => Math.round(v * 100) + '%' },
   { key: 'runSpeedMs', label: 'Пауза між кроками', step: 200, min: 200, max: 3000, fmt: v => (v / 1000).toFixed(1) + ' с' },
@@ -32,7 +33,7 @@ export function openSettings() {
       button.setAttribute('data-settings-focus', key);
       return button;
     };
-    const rows = STEPPERS.map(st => {
+    const rows = STEPPERS.filter(st => st.key !== 'headSensitivity' || s.mode === 'head').map(st => {
       const change = (d) => {
         const v = Math.round(Math.min(st.max, Math.max(st.min, s[st.key] + d * st.step)) * 100) / 100;
         updateSettings({ [st.key]: v }); render();
@@ -46,26 +47,37 @@ export function openSettings() {
         h('div', { class: 'stepper-value' }, st.fmt(s[st.key])), plus);
     });
     const toggles = [
+      control({ webcam: 'Режим: погляд', head: 'Режим: голова' }[s.mode] || 'Режим: миша', () => { m.close(); emit('choose-mode'); }, 'mode', { icon: '🔄' }),
       control(s.autoCalibrate ? 'Автокалібр.: так' : 'Автокалібр.: ні', () => { updateSettings({ autoCalibrate: !s.autoCalibrate }); render(); }, 'autoCalibrate', { icon: '🎯' }),
+      ...(s.mode !== 'mouse' ? [control(s.eyesStop ? 'Стоп очима: так' : 'Стоп очима: ні', () => {
+        updateSettings({ eyesStop: !s.eyesStop });
+        toast(store.settings.eyesStop ? 'Заплющені на 3 секунди очі зупиняють калібрування' : 'Калібрування зупиняє лише Esc або кнопка «Скасувати»', 5000);
+        render();
+      }, 'eyesStop', { icon: '⏸' })] : []),
       control('Клік: ' + CLICK_MODES[s.clickMode], () => {
         const keys = Object.keys(CLICK_MODES);
         const next = keys[(keys.indexOf(s.clickMode) + 1) % keys.length];
-        if (next !== 'dwell' && s.mode !== 'webcam') toast('Кліпання розпізнається лише в режимі камери');
+        if (next !== 'dwell' && s.mode === 'mouse') toast('Кліпання розпізнається лише в режимі камери');
         updateSettings({ clickMode: next }); render();
       }, 'clickMode', { icon: '👁' }),
       control(s.voiceEnabled ? 'Озвучка: Увімк' : 'Озвучка: Вимк', () => { updateSettings({ voiceEnabled: !s.voiceEnabled }); render(); }, 'voiceEnabled', { icon: '🔊' }),
       control(s.lang === 'uk' ? 'Мова: Укр' : 'Мова: Eng', () => { updateSettings({ lang: s.lang === 'uk' ? 'en' : 'uk' }); render(); }, 'lang', { icon: '🌐' }),
       control(s.sound ? 'Звук: так' : 'Звук: ні', () => { updateSettings({ sound: !s.sound }); render(); }, 'sound', { icon: '🔔' }),
       control(s.showDot ? 'Точка: так' : 'Точка: ні', () => { updateSettings({ showDot: !s.showDot }); render(); }, 'showDot', { icon: '📍' }),
-      control(s.mode === 'webcam' ? 'Режим: камера' : 'Режим: миша', () => { m.close(); emit('choose-mode'); }, 'mode', { icon: '🔄' }),
       ...(s.mode === 'webcam' ? [
         control('Калібрувати', () => { m.close(); emit('calibrate'); }, 'calibrate', { icon: '🎯' }),
         control('Камера', () => { m.close(); emit('choose-camera'); }, 'camera', { icon: '📷' }),
         control('Перевірка очей', () => openEyeTest(), 'eyeTest', { icon: '👁' }),
       ] : []),
+      ...(s.mode === 'head' ? [
+        control('Центрувати голову', () => { m.close(); emit('calibrate'); }, 'calibrate', { icon: '🎯' }),
+        control(s.headMirror ? 'Напрямок: дзеркальний' : 'Напрямок: звичайний', () => { updateSettings({ headMirror: !s.headMirror }); render(); }, 'headMirror', { icon: '↔' }),
+        control('Камера', () => { m.close(); emit('choose-camera'); }, 'camera', { icon: '📷' }),
+      ] : []),
       control('Вийти з програми', () => { window.close(); location.href = 'about:blank'; }, 'exit', { icon: '🚪', cls: 'danger' }),
     ];
-    const pages = [h('div', { class: 'steppers' }, rows.slice(0, 4)), h('div', { class: 'steppers' }, rows.slice(4, 8))];
+    const pages = [];
+    for (let i = 0; i < rows.length; i += 4) pages.push(h('div', { class: 'steppers' }, rows.slice(i, i + 4)));
     for (let i = 0; i < toggles.length; i += 4) pages.push(h('div', { class: 'settings-toggles' }, toggles.slice(i, i + 4)));
     page = Math.min(page, pages.length - 1);
     const prev = control('Назад', () => { page--; render(); }, 'prev');

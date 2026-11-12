@@ -36,6 +36,7 @@ const icons = {
   "🗑": "trash-2",
   "📷": "camera",
   "🖱": "mouse",
+  "🙂": "scan-face",
   "✓": "check",
   "➕": "plus",
   "🧹": "eraser",

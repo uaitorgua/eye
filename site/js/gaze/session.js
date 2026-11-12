@@ -9,6 +9,9 @@ import { startWebcam, calibrate, cam, cameraPermission, hasCalibration, SITE_BLO
 import { choose } from '../ui/modal.js';
 import { toast } from '../ui/dom.js';
 import { onDrift, resetDrift } from './drift.js';
+import { startHead, recenterHead } from './head.js';
+import { showCalibrationReport } from '../ui/calib-report.js';
+import { cue } from '../core/cue.js';
 
 let els = {};
 
@@ -45,14 +48,24 @@ export function initGazeSession(elements = {}) {
 }
 
 async function runCalibration() {
+  // У режимі голови «калібрування» — це центрування: подивитись прямо на екран.
+  if (store.settings.mode === 'head') {
+    if (!cam.ready && !((await prepareCameraPermission()) && (await startWebcam()))) return;
+    return recenterHead();
+  }
   if (store.settings.mode !== 'webcam') return toast('Калібрування потрібне лише в режимі камери');
   if (!cam.ready && !((await prepareCameraPermission()) && (await startWebcam()))) return;
   const r = await calibrate();
 
   if (r.cancelled) {
-    toast(hasCalibration()
-      ? 'Калібрування скасовано. Працює попереднє налаштування погляду.'
-      : 'Калібрування скасовано. Без нього погляд може влучати неточно — запустіть його в Налаштуваннях → «Калібрувати».', 7000);
+    // Після зупинки повертаємо звичайний статус камери замість «Калібрування 3/9».
+    emit('cam-status', { text: 'Камера працює', ok: true });
+    const how = r.reason === 'eyes' ? 'Калібрування зупинено: очі були заплющені 3 секунди.' : 'Калібрування скасовано.';
+    // Очі ще можуть бути заплющені — кажемо вголос, що зупинка спрацювала.
+    if (r.reason === 'eyes') cue('calib_stopped', 'Калібрування зупинено. Можна розплющити очі.');
+    toast(how + ' ' + (hasCalibration()
+      ? 'Працює попереднє налаштування погляду.'
+      : 'Без нього погляд може влучати неточно — запустіть його в Налаштуваннях → «Калібрувати».'), 7000);
     return;
   }
   if (!r.ok) {
@@ -70,27 +83,16 @@ async function runCalibration() {
   const basePx = Math.round(r.worstPx != null ? r.worstPx : r.accuracyPx);
   updateSettings({ snap: Math.min(220, Math.max(40, Math.round(basePx * 0.9))) });
 
-  const deg = (v) => (v == null ? '—' : v.toFixed(1) + '°');
-  const parts = [
-    `Точність: ${r.grade.label} ${deg(r.accuracyDeg)}`,
-    `найгірша точка ${deg(r.worstDeg)}`,
-    `стабільність ${deg(r.precisionDeg)}`,
-    `валідних даних ${r.validPct}%`,
-  ];
-  if (r.distanceCm) parts.push(`відстань ~${r.distanceCm} см`);
-  if (r.grade.key === 'poor') parts.push('Порада: більше світла на обличчя, сядьте ближче й рівніше');
-
-  const again = await choose(parts.join(' · '), [
-    { label: 'Ще раз', icon: '🎯', value: true },
-    { label: 'Готово', icon: '✓', value: false, cls: 'ok' }], { cols: 2, cancel: false });
-  if (again) runCalibration();
+  emit('cam-status', { text: 'Камера працює · точність ' + r.grade.label, ok: true });
+  if (await showCalibrationReport(r, { snap: store.settings.snap })) runCalibration();
 }
 
 async function chooseMode() {
   const mode = await choose('Як керувати?', [
     { label: 'Очима через вебкамеру', icon: '📷', value: 'webcam', sub: 'WebGazer, потрібне калібрування' },
+    { label: 'Рухами голови', icon: '🙂', value: 'head', sub: 'Вебкамера стежить за поворотом голови, без калібрування' },
     { label: 'Миша або трекер очей', icon: '🖱', value: 'mouse', sub: 'Tobii / Windows Eye Control рухають курсор' },
-  ], { cols: 2, cancel: false, subtitle: 'Обирає дорослий. Змінити можна будь-коли в налаштуваннях.' });
+  ], { cols: 3, cancel: false, subtitle: 'Обирає дорослий. Змінити можна будь-коли в налаштуваннях.' });
   updateSettings({ mode });
   applyMode();
 }
@@ -105,7 +107,7 @@ async function chooseCamera() {
     })), { cols: 1 });
     if (!id) return;
     updateSettings({ cameraId: id });
-    if (store.settings.mode === 'webcam') {
+    if (store.settings.mode !== 'mouse') {
       // WebGazer не вміє змінити камеру на льоту — перезавантажуємо сторінку.
       cam.ready = false;
       toast('Налаштування збережено. Перезапуск...', 2000);
@@ -137,16 +139,23 @@ async function prepareCameraPermission() {
 
 async function applyMode() {
   document.body.dataset.mode = store.settings.mode;
-  if (store.settings.mode === 'webcam') {
+  if (store.settings.mode === 'head') {
+    if (els.calibBtn) els.calibBtn.hidden = false;
+    if (!cam.ready && !(await prepareCameraPermission())) return;
+    if (!cam.ready && !(await startWebcam())) return;
+    startHead();
+    emit('cam-status', { text: 'Режим: рухи голови', ok: true });
+    if (!(await recenterHead())) toast('Центрування пропущено. Запустіть його в Налаштуваннях → «Центрувати голову».', 7000);
+  } else if (store.settings.mode === 'webcam') {
     if (els.calibBtn) els.calibBtn.hidden = false;
     if (!cam.ready && !(await prepareCameraPermission())) return;
     if (!cam.ready && !(await startWebcam())) return;
     if (store.settings.autoCalibrate) {
-      // A saved calibration is reused on reload; recalibrating is offered, not forced.
+      // Offer reuse only if WebGazer has a calibration model loaded.
       if (!hasCalibration()) return runCalibration();
       const again = await choose('Калібрувати знову?', [
         { label: 'Продовжити', icon: '✓', value: false, cls: 'ok', sub: 'Попереднє калібрування' },
-        { label: 'Калібрувати', icon: '🎯', value: true, sub: 'Приблизно хвилина' },
+        { label: 'Калібрувати', icon: '🎯', value: true, sub: 'Кружечок для стеження' },
       ], { cols: 2, cancel: false, subtitle: 'Якщо точка погляду влучає добре, можна одразу продовжити.' });
       if (again) runCalibration();
     }

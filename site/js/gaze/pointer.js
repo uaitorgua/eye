@@ -44,8 +44,17 @@ export function feedGaze(x, y) {
   push(x, y, false);
 }
 
+// Режим голови: точки вже згладжені фільтром 1€ у head-pose.js, тож передаємо їх як є.
+export function feedHead(x, y) {
+  if (store.settings.mode !== 'head') return;
+  const now = performance.now();
+  if (now - mouseAt < MOUSE_OVERRIDE_MS) return;
+  if (eyes.closed || now - eyes.reopenedAt < REOPEN_SETTLE_MS) return;   // кліпання-клік не має зсувати вказівник
+  push(x, y, true);
+}
+
 document.addEventListener('mousemove', (e) => {
   // 'mouse' — основне джерело; 'webcam' — викладач на MOUSE_OVERRIDE_MS після останнього руху.
-  if (store.settings.mode === 'webcam') { mouseAt = performance.now(); recent = []; }
+  if (store.settings.mode !== 'mouse') { mouseAt = performance.now(); recent = []; }
   push(e.clientX, e.clientY, true);
 });

@@ -114,10 +114,10 @@ test('Settings pagination exposes all stepper controls and retains focus after u
   find('next').dispatchEvent(new Event('dwell'));
   assert.ok(find('snap-plus'));
   find('next').dispatchEvent(new Event('dwell'));
+  assert.ok(find('mode'), 'control mode is the first switch');
   assert.ok(find('autoCalibrate'));
-  assert.ok(find('lang'));
   find('next').dispatchEvent(new Event('dwell'));
-  assert.ok(find('mode'));
+  assert.ok(find('lang'));
   assert.ok(find('exit'));
   find('close').dispatchEvent(new Event('dwell'));
   assert.equal(layer.children.length, 0);

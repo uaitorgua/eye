@@ -1,6 +1,5 @@
 ﻿// Екран «📖 Книги»: бібліотека PDF + читанка на весь екран.
-// Читання: погляд у нижній/верхній смузі тексту плавно прокручує (edge-scroll.js),
-// знизу — панель великих кнопок: масштаб, гортання сторінок, прокрутка очима вкл/викл, пауза.
+// Читання: окремі верхня/нижня смуги керують gaze-scroll, кнопки зібрані у правій рейці.
 // Додавання PDF — викладач мишею (кнопка або перетягування файлу на екран).
 import { h, toast } from '../ui/dom.js';
 import { openModal, tile, choose } from '../ui/modal.js';
@@ -8,15 +7,17 @@ import { store, updateSettings } from '../core/store.js';
 import { emit, on } from '../core/bus.js';
 import { onPointer } from '../gaze/pointer.js';
 import { eyes } from '../gaze/blink.js';
-import { createEdgeScroller } from './edge-scroll.js';
+import { createEdgeScroller, projectScrollBand } from './edge-scroll.js';
 import { PdfView } from './pdf-view.js';
 import * as books from './book-store.js';
 
 const LAST_BOOK = 'eyeflow.lastBook';
 const $ = (id) => document.getElementById(id);
 
-let view, section, currentId = null, gx = -1, gy = -1, saveTimer, libraryModal;
+let view, section, currentId = null, gx = -1, gy = -1, pointerAt = -Infinity, saveTimer, libraryModal;
 const scroller = createEdgeScroller();
+// Тло сторінок: звичайне, тепле (менше відблиску) і темне (для чутливих до яскравого світла).
+const THEMES = { paper: 'Тло: біле', sepia: 'Тло: тепле', dark: 'Тло: темне' };
 
 // standalone: окрема сторінка reader.html — «Вихід» стає «Меню» (калібрування, налаштування, перехід у EyeFlow).
 let standalone = false;
@@ -24,7 +25,8 @@ let standalone = false;
 export function initReader({ standalone: alone = false } = {}) {
   standalone = alone;
   section = $('reader-section');
-  view = new PdfView($('reader-view'), $('reader-pages'), { onChange: onViewChange });
+  const viewEl = $('reader-view');
+  view = new PdfView(viewEl, $('reader-pages'), { onChange: onViewChange });
 
   const bind = (id, fn) => $(id).addEventListener('dwell', fn);
   bind('rd-exit', () => (standalone ? openStandaloneMenu() : closeReader()));
@@ -38,15 +40,22 @@ export function initReader({ standalone: alone = false } = {}) {
   bind('rd-next', () => view.goToPage(view.position().page + 1));
   bind('rd-auto', () => updateSettings({ readerAutoScroll: !store.settings.readerAutoScroll }));
   bind('rd-pause', () => emit('toggle-pause'));
-  // Вузькі екрани: основні кнопки в панелі, решта — на сторінці «Ще».
+  bind('rd-theme', () => {
+    const keys = Object.keys(THEMES);
+    updateSettings({ readerTheme: keys[(Math.max(0, keys.indexOf(store.settings.readerTheme)) + 1) % keys.length] });
+  });
+  const step = (dir) => viewEl.scrollBy({ top: dir * viewEl.clientHeight * 0.8,
+    behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  $('rd-hint-top').addEventListener('click', () => step(-1));
+  $('rd-hint-bottom').addEventListener('click', () => step(1));
   bind('rd-more', () => {
-    const more = $('reader-section').querySelector('.rd-bar').classList.toggle('more');
+    const more = section.querySelector('.rd-rail').classList.toggle('more');
     $('rd-more').querySelector('.tile-label').textContent = more ? 'Готово' : 'Ще';
   });
   on('settings-changed', renderBar);
   on('pause-changed', renderBar);
 
-  onPointer((x, y) => { gx = x; gy = y; });
+  onPointer((x, y) => { gx = x; gy = y; pointerAt = performance.now(); });
   requestAnimationFrame(scrollLoop);
 
   // Викладач: перетягнути PDF на екран.
@@ -69,11 +78,13 @@ export async function openReader() {
 
 async function openStandaloneMenu() {
   const a = await choose('☰ Меню', [
-    { label: 'Калібрувати', icon: '🎯', value: 'calib' },
+    { label: store.settings.mode === 'head' ? 'Центрувати голову' : 'Калібрувати', icon: '🎯', value: 'calib' },
+    { label: 'Спосіб керування', icon: '🔄', value: 'mode', sub: { webcam: 'Зараз: погляд', head: 'Зараз: голова', mouse: 'Зараз: миша' }[store.settings.mode] },
     { label: 'Налаштування', icon: '⚙', value: 'settings' },
     { label: 'Блок-схеми EyeFlow', icon: '🧩', value: 'eyeflow' },
   ], { cols: 2 });
   if (a === 'calib') emit('calibrate');
+  if (a === 'mode') emit('choose-mode');
   if (a === 'settings') (await import('../ui/settings.js')).openSettings();
   if (a === 'eyeflow') { saveNow(); location.href = 'index.html'; }
 }
@@ -81,7 +92,7 @@ async function openStandaloneMenu() {
 export function closeReader() {
   saveNow();
   setDotDim(false);           // повертаємо яскраву точку за межами читанки
-  $('reader-section').querySelector('.rd-bar').classList.remove('more');
+  section.querySelector('.rd-rail').classList.remove('more');
   $('rd-more').querySelector('.tile-label').textContent = 'Ще';
   section.classList.add('hidden');
   if (!standalone && location.hash === '#/books') history.replaceState(null, '', '#/');
@@ -93,11 +104,19 @@ function scrollLoop(now) {
   requestAnimationFrame(scrollLoop);
   const dt = Math.min(0.1, (now - prev) / 1000); prev = now;
   const active = !section.classList.contains('hidden') && view.doc && store.settings.readerAutoScroll
-    && !store.paused && !eyes.closed && !document.querySelector('#modal-layer > .modal');
+    && !store.paused && !eyes.closed && !document.hidden
+    && (store.settings.mode === 'mouse' || now - pointerAt < 500)
+    && !document.querySelector('#modal-layer > .modal, [data-gaze-block]');
   const el = $('reader-view');
   if (!active || gx < 0) { scroller.reset(); setHints(null, 0); setDotDim(false); return; }
   const r = el.getBoundingClientRect();
-  const v = scroller.update(gx, gy, r, now, { canX: view.canScrollX, maxSpeed: store.settings.readerScrollSpeed });
+  const point = projectScrollBand(gx, gy, r,
+    $('rd-hint-top').getBoundingClientRect(), $('rd-hint-bottom').getBoundingClientRect());
+  const v = scroller.update(point.x, point.y, r, now, {
+    canX: !point.inBand && view.canScrollX,
+    canY: point.inBand && el.scrollHeight > el.clientHeight + 2,
+    maxSpeed: store.settings.readerScrollSpeed,
+  });
   setHints(v.zone, v.ready);
   if (v.vx || v.vy) el.scrollBy(v.vx * dt, v.vy * dt);
   // Точка погляду не має закривати слова: у зоні тексту робимо її ледь помітною,
@@ -108,11 +127,20 @@ function scrollLoop(now) {
 
 function setDotDim(dim) {
   const dot = $('gaze-dot');
-  if (dot) dot.style.opacity = dim ? '0.12' : '1';
+  if (dot) dot.style.opacity = dim ? '0.35' : '1';
 }
 
 function setHints(zone, ready) {
-  for (const z of ['top', 'bottom', 'left', 'right']) {
+  // Смуга наповнюється, поки триває затримка перед рухом, а синє світіння заходить на текст —
+  // так видно, що прокрутка зараз почнеться і в який бік.
+  for (const z of ['top', 'bottom']) {
+    const on = zone === z;
+    const band = $('rd-hint-' + z);
+    band.style.setProperty('--scroll-progress', on ? (0.12 + 0.88 * ready).toFixed(2) : 0);
+    band.classList.toggle('scrolling', on && ready >= 1);
+    $('rd-glow-' + z).style.opacity = on ? (0.2 + 0.8 * ready).toFixed(2) : 0;
+  }
+  for (const z of ['left', 'right']) {
     const hint = $('rd-hint-' + z);
     hint.style.opacity = zone === z ? (0.25 + 0.6 * ready).toFixed(2) : 0;
   }
@@ -123,9 +151,21 @@ function onViewChange() {
   if (!view.doc) return;
   const { page } = view.position();
   $('rd-page').textContent = `стор. ${page} з ${view.pageCount}`;
+  // Смужка прогресу під назвою і стан смуг на початку/в кінці книги.
+  const el = $('reader-view'), max = el.scrollHeight - el.clientHeight;
+  section.style.setProperty('--read-progress', max > 0 ? Math.min(1, el.scrollTop / max).toFixed(4) : 0);
+  setBandEnd('top', max <= 0 || el.scrollTop <= 1, 'Початок', 'Вгору');
+  setBandEnd('bottom', max <= 0 || el.scrollTop >= max - 1, 'Кінець книги', 'Вниз');
   $('rd-fit').querySelector('.tile-label').textContent = view.zoom === 1 ? 'По ширині' : Math.round(view.zoom * 100) + '%';
   clearTimeout(saveTimer);
   saveTimer = setTimeout(saveNow, 800);
+}
+
+function setBandEnd(z, atEnd, endLabel, label) {
+  const band = $('rd-hint-' + z);
+  if (band.classList.contains('at-end') === atEnd) return;
+  band.classList.toggle('at-end', atEnd);
+  band.querySelector('.rd-band-label').textContent = atEnd ? endLabel : label;
 }
 
 function saveNow() {
@@ -137,7 +177,11 @@ function renderBar() {
   const s = store.settings;
   $('rd-auto').querySelector('.tile-label').textContent = s.readerAutoScroll ? 'Прокрутка: так' : 'Прокрутка: ні';
   $('rd-auto').classList.toggle('active', s.readerAutoScroll);
+  $('rd-auto').setAttribute('aria-pressed', s.readerAutoScroll);
   $('rd-pause').querySelector('.tile-label').textContent = store.paused ? 'Продовжити' : 'Пауза';
+  const theme = THEMES[s.readerTheme] ? s.readerTheme : 'paper';
+  section.dataset.theme = theme;
+  $('rd-theme').querySelector('.tile-label').textContent = THEMES[theme];
 }
 
 // ---------- книги ----------
