@@ -26,6 +26,7 @@ export const DEFAULT_SETTINGS = {
   readerScrollSpeed: 350,  // її найбільша швидкість, px/с
   runSpeedMs: 900,     // пауза між кроками при запуску
   autoCalibrate: true, // калібрувати при кожному запуску
+  eyesStop: true,      // заплющені на 3 с очі зупиняють калібрування / центрування
   breakReminderMin: 20, // нагадування про перерву для очей, хв (0 — вимкнено)
   settingsVersion: 2,  // версія схеми налаштувань — для міграцій у migrate()
 };

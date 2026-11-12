@@ -62,8 +62,12 @@ export function renderChart(root, program, opts) {
     return block(st);
   };
 
+  // Порожня програма: підказуємо перший крок, щоб екран не виглядав «зламаним».
+  const hint = !program.main.length && !opts.locked
+    ? h('p', { class: 'fc-empty-hint' }, h('b', {}, 'Тут буде твоя програма.'), ' Подивись на «+» між «Початок» і «Кінець», щоб додати перший блок.')
+    : null;
   root.replaceChildren(h('div', { class: 'fc-seq fc-main' },
     h('div', { class: 'fc-terminal' }, '▶ Початок'),
     seq(program.main, 'main'),
-    h('div', { class: 'fc-terminal end' }, '■ Кінець')));
+    h('div', { class: 'fc-terminal end' }, '■ Кінець')), ...(hint ? [hint] : []));
 }

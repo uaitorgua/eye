@@ -85,7 +85,8 @@ export function grid(cols, ...tiles) {
 // Питання з варіантами → Promise зі значенням вибраного варіанту (або null для «Скасувати»).
 export function choose(title, options, { cols = 3, cancel = true, subtitle = '' } = {}) {
   return new Promise((resolve) => {
-    const m = openModal({ title, subtitle, cls: 'choice' + (options.length <= 2 ? ' choice-few' : '') });
+    const oneRow = options.length > 2 && options.length + (cancel ? 1 : 0) <= cols;
+    const m = openModal({ title, subtitle, cls: 'choice' + (options.length <= 2 ? ' choice-few' : oneRow ? ' choice-row' : '') });
     const done = (v) => { m.close(); resolve(v); };
     const size = 4;
     const pages = Math.ceil(options.length / size);

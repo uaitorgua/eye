@@ -10,6 +10,8 @@ import { choose } from '../ui/modal.js';
 import { toast } from '../ui/dom.js';
 import { onDrift, resetDrift } from './drift.js';
 import { startHead, recenterHead } from './head.js';
+import { showCalibrationReport } from '../ui/calib-report.js';
+import { cue } from '../core/cue.js';
 
 let els = {};
 
@@ -56,9 +58,14 @@ async function runCalibration() {
   const r = await calibrate();
 
   if (r.cancelled) {
-    toast(hasCalibration()
-      ? 'Калібрування скасовано. Працює попереднє налаштування погляду.'
-      : 'Калібрування скасовано. Без нього погляд може влучати неточно — запустіть його в Налаштуваннях → «Калібрувати».', 7000);
+    // Після зупинки повертаємо звичайний статус камери замість «Калібрування 3/9».
+    emit('cam-status', { text: 'Камера працює', ok: true });
+    const how = r.reason === 'eyes' ? 'Калібрування зупинено: очі були заплющені 3 секунди.' : 'Калібрування скасовано.';
+    // Очі ще можуть бути заплющені — кажемо вголос, що зупинка спрацювала.
+    if (r.reason === 'eyes') cue('calib_stopped', 'Калібрування зупинено. Можна розплющити очі.');
+    toast(how + ' ' + (hasCalibration()
+      ? 'Працює попереднє налаштування погляду.'
+      : 'Без нього погляд може влучати неточно — запустіть його в Налаштуваннях → «Калібрувати».'), 7000);
     return;
   }
   if (!r.ok) {
@@ -76,20 +83,8 @@ async function runCalibration() {
   const basePx = Math.round(r.worstPx != null ? r.worstPx : r.accuracyPx);
   updateSettings({ snap: Math.min(220, Math.max(40, Math.round(basePx * 0.9))) });
 
-  const deg = (v) => (v == null ? '—' : v.toFixed(1) + '°');
-  const parts = [
-    `Точність: ${r.grade.label} ${deg(r.accuracyDeg)}`,
-    `найгірша точка ${deg(r.worstDeg)}`,
-    `стабільність ${deg(r.precisionDeg)}`,
-    `валідних даних ${r.validPct}%`,
-  ];
-  if (r.distanceCm) parts.push(`відстань ~${r.distanceCm} см`);
-  if (r.grade.key === 'poor') parts.push('Порада: більше світла на обличчя, сядьте ближче й рівніше');
-
-  const again = await choose(parts.join(' · '), [
-    { label: 'Ще раз', icon: '🎯', value: true },
-    { label: 'Готово', icon: '✓', value: false, cls: 'ok' }], { cols: 2, cancel: false });
-  if (again) runCalibration();
+  emit('cam-status', { text: 'Камера працює · точність ' + r.grade.label, ok: true });
+  if (await showCalibrationReport(r, { snap: store.settings.snap })) runCalibration();
 }
 
 async function chooseMode() {

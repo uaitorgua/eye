@@ -49,6 +49,11 @@ export function openSettings() {
     const toggles = [
       control({ webcam: 'Режим: погляд', head: 'Режим: голова' }[s.mode] || 'Режим: миша', () => { m.close(); emit('choose-mode'); }, 'mode', { icon: '🔄' }),
       control(s.autoCalibrate ? 'Автокалібр.: так' : 'Автокалібр.: ні', () => { updateSettings({ autoCalibrate: !s.autoCalibrate }); render(); }, 'autoCalibrate', { icon: '🎯' }),
+      ...(s.mode !== 'mouse' ? [control(s.eyesStop ? 'Стоп очима: так' : 'Стоп очима: ні', () => {
+        updateSettings({ eyesStop: !s.eyesStop });
+        toast(store.settings.eyesStop ? 'Заплющені на 3 секунди очі зупиняють калібрування' : 'Калібрування зупиняє лише Esc або кнопка «Скасувати»', 5000);
+        render();
+      }, 'eyesStop', { icon: '⏸' })] : []),
       control('Клік: ' + CLICK_MODES[s.clickMode], () => {
         const keys = Object.keys(CLICK_MODES);
         const next = keys[(keys.indexOf(s.clickMode) + 1) % keys.length];

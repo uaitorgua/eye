@@ -77,5 +77,5 @@ export const hasCalibration = () => Boolean(window.webgazer?.getRegression()?.[0
 // і метрики якості (accuracy °, precision RMS-S2S °, частка валідних даних).
 // Повертає повний звіт; сумісність: поле accuracyPx замінює колишню «похибку в px».
 export async function calibrate() {
-  return runCalibration({ onStatus: (text) => emit('cam-status', { text }) });
+  return runCalibration({ onStatus: (text) => emit('cam-status', { text }), sound: store.settings.sound, eyesStop: store.settings.eyesStop });
 }

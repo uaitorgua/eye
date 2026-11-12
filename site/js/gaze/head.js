@@ -5,6 +5,8 @@ import { store } from '../core/store.js';
 import { feedHead } from './pointer.js';
 import { headOffset, createHeadPointer, median } from './head-pose.js';
 import { h, toast } from '../ui/dom.js';
+import { watchEyesStop } from './eyes-stop.js';
+import { cue } from '../core/cue.js';
 
 const POLL_MS = 33;
 const HOLD_MS = 1400;        // скільки тримати голову рівно під час центрування
@@ -47,14 +49,17 @@ export function recenterHead() {
     const title = h('p', { class: 'head-centre-title' }, 'Сядьте зручно й дивіться прямо сюди');
     const msg = h('p', { class: 'head-centre-msg', role: 'status' }, 'Шукаю обличчя…');
     const cancel = h('button', { class: 'head-centre-cancel', type: 'button' }, 'Скасувати (Esc)');
+    const note = store.settings.eyesStop === false ? null
+      : h('p', { class: 'head-centre-note' }, 'Щоб зупинити без рук, заплющте очі на 3 секунди');
     const el = h('div', { class: 'head-centre', 'data-gaze-block': '', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Центрування голови' },
-      ring, title, msg, cancel);
+      ring, title, msg, cancel, note);
     document.body.appendChild(el);
 
     const started = performance.now();
     let samples = [], heldSince = 0;
     const finish = (ok) => {
       clearInterval(loop);
+      stopEyes();
       document.removeEventListener('keydown', onKey, true);
       const done = () => { el.remove(); centring = null; resolve(ok); };
       if (!ok) return done();
@@ -68,6 +73,12 @@ export function recenterHead() {
     const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(false); } };
     document.addEventListener('keydown', onKey, true);
     cancel.addEventListener('click', () => finish(false));
+    // Те саме правило, що й у калібруванні погляду: очі заплющені 3 с — зупиняємось.
+    const stopEyes = store.settings.eyesStop === false ? () => {} : watchEyesStop(el, () => {
+      toast('Центрування зупинено: очі були заплющені 3 секунди.', 6000);
+      cue('centre_stopped', 'Центрування зупинено. Можна розплющити очі.');
+      finish(false);
+    }, { sound: store.settings.sound, low: true });
 
     const loop = setInterval(() => {
       const now = performance.now();
