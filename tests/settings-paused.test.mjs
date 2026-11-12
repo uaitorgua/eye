@@ -116,9 +116,11 @@ test('Settings pagination exposes all stepper controls and retains focus after u
   find('next').dispatchEvent(new Event('dwell'));
   assert.ok(find('mode'), 'control mode is the first switch');
   assert.ok(find('autoCalibrate'));
+  if (store.settings.mode !== 'mouse') assert.ok(find('eyesStop'), 'eyes-stop switch sits next to calibration');
   find('next').dispatchEvent(new Event('dwell'));
   assert.ok(find('lang'));
-  assert.ok(find('exit'));
+  for (let i = 0; i < 5 && !find('exit'); i++) find('next').dispatchEvent(new Event('dwell'));
+  assert.ok(find('exit'), 'the last page ends with Exit');
   find('close').dispatchEvent(new Event('dwell'));
   assert.equal(layer.children.length, 0);
 });

@@ -20,12 +20,16 @@ class Element extends EventTarget {
   children = [];
   isConnected = true;
   appendChild(el) { this.children.push(el); }
+  append(...els) { this.children.push(...els); }
   setAttribute() {}
   set innerHTML(html) {
     this.children = [];
     if (html.includes('gz-bar')) this.bar = new Element();
+    if (html.includes('gz-stage')) this.stage = new Element();
+    this.pips = Array.from({ length: (html.match(/<i[ >]/g) || []).length }, () => new Element());
   }
-  querySelector(selector) { return selector === '.gz-bar' ? this.bar : null; }
+  querySelector(selector) { return selector === '.gz-bar' ? this.bar : selector === '.gz-stage' ? this.stage : null; }
+  querySelectorAll(selector) { return selector === '.gz-pips i' ? this.pips || [] : []; }
   remove() { this.isConnected = false; }
 }
 
