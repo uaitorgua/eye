@@ -1,5 +1,5 @@
 .hidden { display: none !important; }
-.tetris-hint { margin: 0; padding: 3px 0; font-size: 13px; text-align: center; color: #152440; }
+.tetris-hint { margin: 0; padding: 3px 0; font-size: 15px; text-align: center; color: #152440; }
 #tetris-section { position: fixed; inset: 0; z-index: 4000; display: grid; grid-template-columns: minmax(64px, 1fr) minmax(0, 300px) minmax(64px, 1fr); gap: var(--gap); padding: var(--gap); background: #f7f4ec; color: #152440; }
 #tetris-section .tile, .tetris-overlay .tile { min-width: 0; min-height: 0; background: #fffdf8; color: #152440; border: 2px solid #b7becb; }
 #tetris-section .tile:focus-visible, #tetris-section .tile.dwell-focus { outline: 4px solid #1856d8; outline-offset: -4px; }
@@ -7,7 +7,11 @@
 .tz { font-size: 64px; }
 .tz-left .tile-icon, .tz-right .tile-icon { font-size: clamp(38px, 7vw, 110px); }
 .tz-left, .tz-right { height: 100%; }
-.tz-right-col { display: grid; grid-template-rows: minmax(64px,130px) 1fr; gap: var(--gap); min-height: 0; }
+/* Side columns: a small control on top, the big arrow below. The wider gap keeps a repeating arrow
+   (gaze held on it) from sliding onto «Меню» or «Пауза». */
+.tz-right-col, .tz-left-col { display: grid; grid-template-rows: minmax(64px,130px) 1fr; gap: calc(var(--gap) * 2 + 8px); min-height: 0; }
+.tz-pause { font-size: 22px; }
+#tetris-section .tz-pause.active { background: #ffe3a0; border-color: #9d6900; }
 .tz-exit { font-size: 22px; }
 .tz-center { display: flex; flex-direction: column; gap: var(--gap); min-height: 0; min-width: 0; }
 .tetris-info { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 14px; min-height: 64px; font-size: 16px; color: #535f73; }
@@ -24,7 +28,9 @@
 .tetris-overlay-actions .tile { flex: 1; min-width: 0; min-height: 130px; }
 @media (max-width: 600px), (max-height: 650px) {
   #tetris-section { gap: 6px; padding: 6px; }
-  .tz-center, .tz-right-col { gap: 6px; }
+  .tz-center { gap: 6px; }
+  .tz-right-col, .tz-left-col { gap: 16px; }
+  .tz-pause { font-size: 16px; }
   .tetris-info { gap: 2px 5px; font-size: 13px; min-height: 46px; }
   .tetris-info b { font-size: 15px; }
   #tetris-next-canvas { height: 32px; width: 32px; }

@@ -43,7 +43,7 @@
   color: #cfe0f7; max-width: 900px; margin: 6px auto 2px; padding: 0 24px; min-height: 3.2em;
 }
 #relax-section.dark #relax-hint { color: #6f86ac; }
-.relax-note { text-align: center; color: #6f86ac; font-size: .82rem; padding: 0 24px 6px; }
+.relax-note { text-align: center; color: #6f86ac; font-size: 15px; padding: 0 24px 6px; }
 
 /* Панель великих кнопок (dwell) */
 .relax-bar { display: flex; gap: 14px; justify-content: center; padding: 10px 24px 24px; }

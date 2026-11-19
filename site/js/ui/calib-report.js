@@ -1,5 +1,6 @@
 // Підсумок калібрування: замість рядка цифр — оцінка, чотири показники й «карта» екрана,
-// де видно, у яких місцях погляд влучає точніше. Повертає Promise<boolean>: true — «Ще раз».
+// де видно, у яких місцях погляд влучає точніше.
+// Повертає Promise: 'again' — «Ще раз» (нове калібрування), 'refine' — «Уточнити» (ще раунд синіх точок), false — «Готово».
 import { h } from './dom.js';
 import { openModal, tile } from './modal.js';
 import { gradeOf } from '../gaze/calibration.js';
@@ -32,7 +33,7 @@ function screenMap(r) {
   return root;
 }
 
-export function showCalibrationReport(r, { snap } = {}) {
+export function showCalibrationReport(r, { snap, onSave, onRefine = true } = {}) {
   return new Promise((resolve) => {
     const key = r.grade?.key || 'poor';
     const m = openModal({ title: 'Калібрування завершено', cls: 'calib-report' });
@@ -46,27 +47,50 @@ export function showCalibrationReport(r, { snap } = {}) {
     const facts = [];
     if (r.distanceCm) facts.push('до екрана ≈ ' + r.distanceCm + ' см');
     if (snap) facts.push('«магніт» кнопок ' + snap + ' px');
-    if (r.retried) facts.push('уточнено точок: ' + r.retried);
+    if (r.retried) facts.push('перезнято точок: ' + r.retried);
+    if (r.trainedOnValidation) facts.push('навчено ще на ' + r.trainedOnValidation + ' синіх точках');
+
+    // Після «Уточнити»: було → стало. Число «стало» виміряне на нових точках, яких модель не бачила.
+    const prevDeg = r.previousAccuracyDeg, prevPx = r.previousAccuracyPx;
+    const change = prevPx != null && r.accuracyPx != null
+      ? h('p', { class: 'cr-change ' + (r.accuracyPx < prevPx ? 'better' : 'worse') },
+        'Раунд ' + r.round + ': промах ' + (prevDeg != null ? prevDeg.toFixed(1) + '°' : Math.round(prevPx) + ' px')
+        + ' → ' + (r.accuracyDeg != null ? r.accuracyDeg.toFixed(1) + '°' : Math.round(r.accuracyPx) + ' px')
+        + (r.accuracyPx < prevPx ? ' · краще' : ' · не покращилось'))
+      : null;
 
     const grade = h('div', { class: 'cr-grade ' + key },
       h('span', { class: 'cr-grade-badge', 'aria-hidden': 'true' }),
       h('div', { class: 'cr-grade-copy' },
         h('p', { class: 'cr-grade-title' }, HEAD[key].title),
         h('p', { class: 'cr-grade-text' }, HEAD[key].text)));
+    // Градуси відомі лише коли камера бачить райдужку (відстань до екрана); інакше головним числом стають пікселі.
+    const metric = (label, d, p) => d == null && p != null ? stat(label, Math.round(p) + ' px', 'градуси невідомі') : stat(label, deg(d), px(p));
     const stats = h('div', { class: 'cr-stats' },
-      stat('Середній промах', deg(r.accuracyDeg), px(r.accuracyPx)),
-      stat('Найгірша точка', deg(r.worstDeg), px(r.worstPx)),
-      stat('Тремтіння погляду', deg(r.precisionDeg), px(r.precisionPx)),
+      metric('Середній промах', r.accuracyDeg, r.accuracyPx),
+      metric('Найгірша точка', r.worstDeg, r.worstPx),
+      metric('Тремтіння погляду', r.precisionDeg, r.precisionPx),
       stat('Корисних кадрів', r.validPct + '%', 'решта — кліпання'));
     const map = h('figure', { class: 'cr-map' }, screenMap(r),
       h('figcaption', {}, 'Кільце показує промах у цій точці екрана: менше кільце — точніше.'));
 
-    // Якщо точність слабка, головною (першою) робимо кнопку «Ще раз».
-    const again = tile('Ще раз', () => done(true), { icon: '🎯', sub: 'Повторити калібрування', cls: key === 'poor' ? 'primary' : '' });
+    // Якщо точність слабка, головною (першою) робимо «Уточнити»: ще 5 синіх точок поверх цієї моделі —
+    // швидше за нове калібрування і не викидає вже зібране.
+    const refine = onRefine ? tile('Уточнити', () => done('refine'), { icon: '🎯', sub: 'Ще 5 точок поверх цієї моделі', cls: key === 'poor' ? 'primary' : '' }) : null;
+    const again = tile('Ще раз', () => done('again'), { icon: '🔄', sub: 'Калібрувати з нуля' });
     const ok = tile('Готово', () => done(false), { icon: '✓', sub: 'Перейти до роботи', cls: key === 'poor' ? '' : 'primary' });
+    // Вдале калібрування можна зберегти як іменований профіль (місце, освітлення, окуляри).
+    // Слабке не пропонуємо: такий профіль лише заважатиме.
+    const save = onSave && key !== 'poor' ? tile('Зберегти', async () => {
+      const meta = await onSave();
+      if (meta) { save.querySelector('.tile-label').textContent = 'Збережено'; save.setAttribute('disabled', ''); }
+    }, { icon: '💾', sub: 'Як профіль' }) : null;
+    // Порядок кнопок не змінюється з оцінкою — змінюється лише те, яка з них виділена. Інакше погляд,
+    // що звик до місця «Готово», натискав би «Уточнити» (і навпаки).
+    const actions = [ok, refine, key === 'poor' ? again : (save || again)].filter(Boolean);
     m.body.append(
-      h('div', { class: 'cr-main' }, h('div', { class: 'cr-left' }, grade, stats,
+      h('div', { class: 'cr-main' }, h('div', { class: 'cr-left' }, grade, change, stats,
         facts.length ? h('p', { class: 'cr-facts' }, facts.join(' · ')) : null), map),
-      h('div', { class: 'cr-actions' }, ...(key === 'poor' ? [again, ok] : [ok, again])));
+      h('div', { class: 'cr-actions' + (actions.length > 2 ? ' cr-three' : '') }, ...actions));
   });
 }

@@ -64,6 +64,47 @@ test('turning past the edge re-anchors the centre so coming back is immediate', 
   assert.ok(Math.abs(calm.neutral.yaw - headOffset(face()).yaw) < RANGE.yaw * 0.06);
 });
 
+test('nodding well below the screen rests the pointer where it was before the nod and resumes on lifting', () => {
+  const hp = createHeadPointer();
+  const opts = { w: 1000, h: 600 };
+  hp.setNeutral(headOffset(face()));
+  let pt, t = 0;
+  // Point up-right and hold.
+  for (; t <= 2000; t += 33) pt = hp.update(headOffset(face({ yaw: deg(5), pitch: deg(-4) })), t, opts);
+  const before = { ...pt };
+  assert.ok(!pt.resting && before.y < 250 && before.x > 600);
+  // Quick nod down to ~22° over 0.25 s, then hold.
+  for (let k = 1; k <= 8; k++, t += 33) pt = hp.update(headOffset(face({ yaw: deg(5), pitch: deg(-4 + 26 * k / 8) })), t, opts);
+  for (const end = t + 600; t <= end; t += 33) pt = hp.update(headOffset(face({ yaw: deg(5), pitch: deg(22) })), t, opts);
+  assert.ok(pt.resting && hp.resting, 'head down → resting');
+  near(pt.x, before.x, 25); near(pt.y, before.y, 40);
+  // Small head movements while resting do nothing.
+  for (const end = t + 1000; t <= end; t += 33) pt = hp.update(headOffset(face({ yaw: deg(-8), pitch: deg(20) })), t, opts);
+  assert.ok(pt.resting); near(pt.y, before.y, 40);
+  // Lift the head back: control returns and the old pose points to the old place.
+  for (const end = t + 1500; t <= end; t += 33) pt = hp.update(headOffset(face({ yaw: deg(5), pitch: deg(-4) })), t, opts);
+  assert.ok(!pt.resting && !hp.resting, 'head up → control again');
+  near(pt.x, before.x, 30); near(pt.y, before.y, 30);
+});
+
+test('reaching the bottom edge normally does not trigger rest, and rest can be switched off', () => {
+  const hp = createHeadPointer();
+  const opts = { w: 1000, h: 600 };
+  hp.setNeutral(headOffset(face()));
+  let pt;
+  for (let t = 0; t <= 4000; t += 33) pt = hp.update(headOffset(face({ pitch: deg(10) })), t, opts);
+  assert.ok(pt.y > 590 && !pt.resting, 'bottom edge at 10° is still pointing');
+  const off = createHeadPointer(); off.setNeutral(headOffset(face()));
+  for (let t = 0; t <= 3000; t += 33) pt = off.update(headOffset(face({ pitch: deg(25) })), t, { ...opts, rest: false });
+  assert.ok(!pt.resting);
+  // A short dip (shorter than the enter delay) is ignored.
+  const dip = createHeadPointer(); dip.setNeutral(headOffset(face()));
+  let t = 0;
+  for (; t <= 1000; t += 33) dip.update(headOffset(face()), t, opts);
+  for (const end = t + 200; t <= end; t += 33) pt = dip.update(headOffset(face({ pitch: deg(25) })), t, opts);
+  assert.ok(!pt.resting);
+});
+
 test('one euro filter calms jitter at rest and keeps up with fast movement', () => {
   const f = oneEuro({ minCutoff: 0.5, beta: 2.5 });
   let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647 - 0.5);

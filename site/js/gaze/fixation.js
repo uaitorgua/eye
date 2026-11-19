@@ -52,18 +52,23 @@ export function createValidationHold(previousOffset) {
 
 // Положення зіниць відносно кутів очей з точок facemesh (з iris-моделлю: 478 точок).
 // Повертає [x, y] у частках ширини ока або null, якщо зіниць немає.
-const IRIS = { left: 468, right: 473 };
-const CORNERS = { left: [33, 133], right: [362, 263] };
+// Порядок двох райдужок (468 і 473) у MediaPipe і в TF.js-facemesh WebGazer може відрізнятися,
+// тож кожну райдужку парою кутів ока підбираємо за відстанню, а не за номером.
+const IRIS_CENTRES = [468, 473];
+const CORNERS = [[33, 133], [362, 263]];
 export function irisOffset(p) {
   if (!p || p.length < 478) return null;
+  const eyes = CORNERS.map(([i, j]) => {
+    const a = p[i], b = p[j];
+    return { mx: (a[0] + b[0]) / 2, my: (a[1] + b[1]) / 2, w: Math.hypot(b[0] - a[0], b[1] - a[1]) || 1 };
+  });
+  const c0 = p[IRIS_CENTRES[0]], c1 = p[IRIS_CENTRES[1]];
+  if (!c0 || !c1) return null;
+  const d = (c, e) => Math.hypot(c[0] - e.mx, c[1] - e.my);
+  const pairs = d(c0, eyes[0]) + d(c1, eyes[1]) <= d(c0, eyes[1]) + d(c1, eyes[0])
+    ? [[c0, eyes[0]], [c1, eyes[1]]] : [[c0, eyes[1]], [c1, eyes[0]]];
   let sx = 0, sy = 0;
-  for (const side of ['left', 'right']) {
-    const [a, b] = CORNERS[side].map(i => p[i]);
-    const w = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
-    const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
-    sx += (p[IRIS[side]][0] - mx) / w;
-    sy += (p[IRIS[side]][1] - my) / w;
-  }
+  for (const [c, e] of pairs) { sx += (c[0] - e.mx) / e.w; sy += (c[1] - e.my) / e.w; }
   return [sx / 2, sy / 2];
 }
 

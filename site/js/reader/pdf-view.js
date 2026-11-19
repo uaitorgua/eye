@@ -22,14 +22,29 @@ export class PdfView {
       for (const e of entries) e.target._visible = e.isIntersecting;
       this.scheduleRender();
     }, { root: viewEl, rootMargin: '150% 0px' });
-    viewEl.addEventListener('scroll', () => this.onChange());
-    new ResizeObserver(() => this.doc && this.applyZoom(this.zoom)).observe(viewEl);
+    this.pos = { page: 1, frac: 0 };   // останнє місце, поки читанку видно (сховану не міряємо)
+    this.wasHidden = false;
+    viewEl.addEventListener('scroll', () => { if (this.view.clientHeight) this.pos = this.position(); this.onChange(); });
+    // Сховану читанку (display: none) не міряємо: там усі сторінки нульової висоти, і position() дав би
+    // «стор. 1» — цим місцем раніше перезаписувалось збережене. Коли читанку знову показано, браузер уже
+    // забув прокрутку, тож повертаємо запам'ятоване місце.
+    new ResizeObserver(() => {
+      if (!this.doc) return;
+      if (!this.view.clientHeight) { this.wasHidden = true; return; }
+      const restore = this.wasHidden; this.wasHidden = false;
+      this.applyZoom(this.zoom, restore ? this.pos : undefined);
+    }).observe(viewEl);
   }
 
   async open(data) {
+    // Спершу відкриваємо новий файл і лише потім закриваємо поточний: зламаний PDF не має
+    // «вивантажувати» книгу, яку людина щойно читала.
+    const doc = await pdfjs.getDocument({ data, cMapUrl: CMAPS, cMapPacked: true, standardFontDataUrl: FONTS }).promise;
+    let first;
+    try { first = await doc.getPage(1); } catch (e) { doc.destroy(); throw e; }
     this.close();
-    this.doc = await pdfjs.getDocument({ data, cMapUrl: CMAPS, cMapPacked: true, standardFontDataUrl: FONTS }).promise;
-    const first = await this.doc.getPage(1);
+    this.doc = doc;
+    this.pos = { page: 1, frac: 0 };
     this.base = first.getViewport({ scale: 1 });      // розмір сторінки (підручники — однакові сторінки)
     for (let i = 1; i <= this.doc.numPages; i++) {
       const el = document.createElement('div');
@@ -72,12 +87,13 @@ export class PdfView {
 
   setPosition({ page = 1, frac = 0 }) {
     const s = this.slots[Math.min(this.slots.length, Math.max(1, page)) - 1];
-    if (s) this.view.scrollTop = s.el.offsetTop + frac * s.el.offsetHeight - GAP;
+    if (!s) return;
+    this.view.scrollTop = s.el.offsetTop + frac * s.el.offsetHeight - GAP;
+    if (this.view.clientHeight) this.pos = { page: +s.el.dataset.page, frac };
   }
 
-  applyZoom(zoom) {
+  applyZoom(zoom, pos = this.view.clientHeight ? this.position() : this.pos) {
     if (!this.doc) return;
-    const pos = this.position();
     const cx = (this.view.scrollLeft + this.view.clientWidth / 2) / Math.max(1, this.pagesEl.scrollWidth);
     this.zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(zoom * 100) / 100));
     for (const s of this.slots) this.size(s);

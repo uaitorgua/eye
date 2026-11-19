@@ -28,9 +28,12 @@ export function openModal({ title = '', subtitle = '', cls = '' } = {}) {
   const offPause = on('pause-changed', updatePause);
   el.appendChild(resume);
   el.appendChild(body);
+  // Робимо інертним лише те, що ще не інертне, і на закритті повертаємо лише це. Екрани, які екран-власник
+  // сам зробив інертними (меню під читанкою), не чіпаємо: інакше після закриття модалки меню могло б
+  // лишитися «замороженим», а погляд (elementFromPoint) не бачить інертних елементів.
   for (const sibling of document.body.children) {
-    if (sibling === layer) continue;
-    if (!inertState.has(sibling)) inertState.set(sibling, sibling.inert);
+    if (sibling === layer || sibling.inert) continue;
+    inertState.set(sibling, false);
     sibling.inert = true;
   }
   const below = layer.lastElementChild;
@@ -41,7 +44,15 @@ export function openModal({ title = '', subtitle = '', cls = '' } = {}) {
     .filter(node => !node.hidden && node.getClientRects().length);
   const focusFirst = () => (focusables()[0] || el).focus();
   const onKey = event => {
-    if (!isTop() || event.key !== 'Tab') return;
+    if (!isTop()) return;
+    // Esc натискає власну кнопку діалогу «Скасувати» / «Закрити» — те саме, що зробив би погляд.
+    if (event.key === 'Escape' && !event.defaultPrevented) {
+      const btn = [...el.querySelectorAll('.cancel, .settings-close, .library-exit, .eye-close, [data-esc]')]
+        .find(node => !node.disabled && !node.closest('[hidden]'));
+      if (btn) { event.preventDefault(); btn.dispatchEvent(new CustomEvent('dwell', { bubbles: true })); }
+      return;
+    }
+    if (event.key !== 'Tab') return;
     const items = focusables();
     if (!items.length) { event.preventDefault(); el.focus(); return; }
     const index = items.indexOf(document.activeElement);
@@ -88,7 +99,8 @@ export function choose(title, options, { cols = 3, cancel = true, subtitle = '' 
     const oneRow = options.length > 2 && options.length + (cancel ? 1 : 0) <= cols;
     const m = openModal({ title, subtitle, cls: 'choice' + (options.length <= 2 ? ' choice-few' : oneRow ? ' choice-row' : '') });
     const done = (v) => { m.close(); resolve(v); };
-    const size = 4;
+    // Усе, що вміщається у два ряди разом зі «Скасувати», — на одній сторінці; інакше сторінки по 4.
+    const size = options.length + (cancel ? 1 : 0) <= cols * 2 ? Math.max(1, options.length) : 4;
     const pages = Math.ceil(options.length / size);
     let page = 0;
     function render(focus = '') {

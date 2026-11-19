@@ -6,21 +6,21 @@
 <title>UAIT Eye — керування комп’ютером очима</title>
 <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg">
 <meta name="theme-color" content="#f7f4ec">
-<link rel="stylesheet" href="css/base.css?v=20261112a">
-<link rel="stylesheet" href="css/home.css?v=20261112a">
-<link rel="stylesheet" href="css/flowchart.css?v=20261112a">
-<link rel="stylesheet" href="css/modals.css?v=20261112a">
-<link rel="stylesheet" href="css/tetris.css?v=20261112a">
-<link rel="stylesheet" href="css/reader.css?v=20261112a">
-<link rel="stylesheet" href="css/browser.css?v=20261112a">
-<link rel="stylesheet" href="css/relax.css?v=20261112a">
-<link rel="stylesheet" href="css/system.css?v=20261112a">
+<link rel="stylesheet" href="css/base.css?v=20261119a">
+<link rel="stylesheet" href="css/home.css?v=20261119a">
+<link rel="stylesheet" href="css/flowchart.css?v=20261119a">
+<link rel="stylesheet" href="css/modals.css?v=20261119a">
+<link rel="stylesheet" href="css/tetris.css?v=20261119a">
+<link rel="stylesheet" href="css/reader.css?v=20261119a">
+<link rel="stylesheet" href="css/browser.css?v=20261119a">
+<link rel="stylesheet" href="css/relax.css?v=20261119a">
+<link rel="stylesheet" href="css/system.css?v=20261119a">
 <script src="lib/webgazer.js"></script>
 </head>
 <body>
 <header id="toolbar">
   <button class="tile tool home" id="btn-home" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/house.svg)"></span></span><span class="tile-label">Меню</span></button>
-  <button class="tile tool pause" id="btn-pause" data-dwell data-dwell-always><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/eye.svg)"></span></span><span class="tile-label">Пауза</span></button>
+  <button class="tile tool pause" id="btn-pause" data-dwell data-dwell-always><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/pause.svg)"></span></span><span class="tile-label">Пауза</span></button>
   <button class="tile tool run" id="btn-run" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/play.svg)"></span></span><span class="tile-label">Запуск</span></button>
   <button class="tile tool" id="btn-step" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/footprints.svg)"></span></span><span class="tile-label">Крок</span></button>
   <button class="tile tool stop" id="btn-stop" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/square.svg)"></span></span><span class="tile-label">Стоп</span></button>
@@ -85,7 +85,10 @@
 
 <!-- Тетріс: відпочинок для очей. Повний екран, лише великі зони погляду. -->
 <section id="tetris-section" class="hidden" data-layer>
-  <button class="tile tz tz-left" id="tz-left" aria-label="Рухати фігуру ліворуч" data-dwell data-dwell-repeat><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/arrow-left.svg)"></span></span></button>
+  <div class="tz-left-col">
+    <button class="tile tz tz-pause" id="tz-pause" data-dwell data-dwell-always><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/pause.svg)"></span></span><span class="tile-label">Пауза</span></button>
+    <button class="tile tz tz-left" id="tz-left" aria-label="Рухати фігуру ліворуч" data-dwell data-dwell-repeat><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/arrow-left.svg)"></span></span></button>
+  </div>
   <div class="tz-center">
     <div class="tetris-info">
       <span>Рахунок <b id="tetris-score">0</b></span><span>Лінії <b id="tetris-lines">0</b></span><span>Рівень <b id="tetris-level">1</b></span>
@@ -133,6 +136,7 @@
       <button class="tile rd-more" id="rd-more" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/ellipsis.svg)"></span></span><span class="tile-label">Ще</span></button>
     </nav>
     <button class="rd-scroll-band rd-scroll-down" id="rd-hint-bottom" type="button" aria-label="Прокрутити вниз" data-gaze-scroll="bottom"><span class="rd-band-pill"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/chevrons-down.svg)"></span><span class="rd-band-label">Вниз</span></span></button>
+    <p id="rd-live" class="sr-only" aria-live="polite"></p>
   </div>
 </section>
 
@@ -177,7 +181,7 @@
 
 <div id="modal-layer"></div>
 <div id="gaze-dot"><div class="ring"></div></div>
-<div id="toast" hidden></div>
+<div id="toast" role="status" aria-live="polite" hidden></div>
 
 <script>
   if (location.protocol === 'file:') {

@@ -30,6 +30,12 @@ let dot, ring;
 // Руками користувач помилку не виправить, тож на час таких вправ жести вимикаємо.
 let gestureSuppressed = false;
 export function setGestureSuppressed(v) { gestureSuppressed = !!v; }
+// «Відпочинок» у режимі голови: вказівник стоїть, але нічого не натискається — можна спокійно подумати.
+let resting = false;
+export function setResting(v) {
+  resting = !!v;
+  if (dot) dot.classList.toggle('resting', resting);
+}
 let current = null, since = 0, locked = null;
 let pending = null, pendingSince = 0;
 let lastX = -1, lastY = -1;
@@ -110,7 +116,7 @@ function loop(now) {
     return;
   }
   if (eyes.closed) { since += dt; return; }      // очі закриті — нічого не рахуємо і не перемикаємо
-  if (now < cooldownUntil || gestureSuppressed) { if (current) setCurrent(null); if (ring) ring.style.setProperty('--p', 0); return; }
+  if (now < cooldownUntil || gestureSuppressed || (resting && store.settings.mode === 'head')) { if (current) setCurrent(null); if (ring) ring.style.setProperty('--p', 0); return; }
   const point = document.elementFromPoint(lastX, lastY);
   if (point?.closest('[data-gaze-scroll]')) {
     if (current) setCurrent(null);
@@ -127,7 +133,8 @@ function loop(now) {
 
   let p = 0;
   if (current && current !== locked && current.isConnected) {
-    const byDwell = store.settings.clickMode === 'dwell' || current.hasAttribute('data-dwell-repeat');
+    // У режимі миші кліпання не розпізнається — завжди затримка, інакше вийти з нього було б нічим.
+    const byDwell = store.settings.clickMode === 'dwell' || store.settings.mode === 'mouse' || current.hasAttribute('data-dwell-repeat');
     p = byDwell ? Math.min(1, (now - since) / store.settings.dwellMs) : 0;
     current.style.setProperty('--dwell', p.toFixed(3));
 
@@ -155,6 +162,7 @@ export function beep() {
 export function initDwell() {
   dot = document.getElementById('gaze-dot');
   ring = dot.querySelector('.ring');
+  dot.hidden = true;           // до першої точки погляду чи руху миші вказівник не висить у куті екрана
   // Клік мишею (викладач) = миттєвий dwell.
   document.addEventListener('click', (e) => {
     const el = e.target.closest('[data-dwell]');
@@ -169,6 +177,7 @@ export function initDwell() {
   for (const [mode, evName] of Object.entries(GESTURE_EVENT)) {
     document.addEventListener(evName, () => {
       if (gestureSuppressed) return;              // вправа на кліпання — не рахуємо як клік
+      if (resting && store.settings.mode === 'head') return;   // відпочинок — кліпання теж не клікає
       if (store.settings.clickMode !== mode) return;
       const el = armed?.isConnected ? armed : current;
       if (!el || !usable(el) || !scope().contains(el)) return;

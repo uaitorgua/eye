@@ -32,6 +32,7 @@ const elements = new Map();
 globalThis.document = {
   getElementById(id) { if (!elements.has(id)) elements.set(id, new Element('div')); return elements.get(id); },
   querySelector() { return null; },
+  addEventListener() {},          // reader keyboard shortcuts
 };
 globalThis.location = { hash: '' };
 globalThis.history = { replaceState() {} };

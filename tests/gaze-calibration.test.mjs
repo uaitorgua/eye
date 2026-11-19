@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createTargetMotion } from '../site/js/gaze/fixation.js';
-import { runCalibration } from '../site/js/gaze/calibration.js';
+import { runCalibration, refineCalibration, VAL_SETS } from '../site/js/gaze/calibration.js';
 
 test('a moving calibration target holds during signal loss and resumes from the same position', () => {
   const step = createTargetMotion([0, 0], [100, 50], 100);
@@ -20,16 +20,22 @@ class Element extends EventTarget {
   children = [];
   isConnected = true;
   appendChild(el) { this.children.push(el); }
+  append(...els) { this.children.push(...els); }
   setAttribute() {}
   set innerHTML(html) {
     this.children = [];
-    if (html.includes('gz-bar')) this.bar = new Element();
+    if (html.includes('gz-bar')) {
+      this.bar = new Element();
+      this.stage = new Element();
+      this.pips = Array.from({ length: (html.match(/<i/g) || []).length }, () => new Element());
+    }
   }
-  querySelector(selector) { return selector === '.gz-bar' ? this.bar : null; }
+  querySelector(selector) { return selector === '.gz-bar' ? this.bar : selector === '.gz-stage' ? this.stage : null; }
+  querySelectorAll(selector) { return selector === '.gz-pips i' ? this.pips || [] : []; }
   remove() { this.isConnected = false; }
 }
 
-async function simulateCalibration({ cancelAtCheck = false, prediction = 'follow' } = {}) {
+async function simulateCalibration({ cancelAtCheck = false, prediction = 'follow', refine = false } = {}) {
   let now = 0, faceTime, face, phaseStart = null, tick = 0;
   const checks = [];
   class Regression {
@@ -83,7 +89,10 @@ async function simulateCalibration({ cancelAtCheck = false, prediction = 'follow
         }
       },
     });
-    return { report, checks, model: regressions[0], previousModel, overlay: document.body.children[0] };
+    const overlay = document.body.children[0];
+    const before = regressions[0].samples.length;
+    const refined = refine ? await refineCalibration({ previous: report, round: 2 }) : null;
+    return { report, refined, added: regressions[0].samples.length - before, checks, model: regressions[0], previousModel, overlay };
   } finally {
     for (const [key, descriptor] of Object.entries(previousGlobals)) {
       if (descriptor) Object.defineProperty(globalThis, key, descriptor);
@@ -101,6 +110,17 @@ test('blue points give the eyes time to arrive, then measure an off-target predi
   assert.ok(Math.abs(report.accuracyPx - Math.hypot(90, 40)) < 0.01);
   assert.equal(report.validPct, 100);
   assert.notEqual(model, previousModel);
+});
+
+test('blue points are measured first, then also used to train the model', async () => {
+  const { report, model } = await simulateCalibration();
+  const at = (fx, fy) => model.samples.filter(([x, y]) => Math.abs(x - fx * 1000) < 1 && Math.abs(y - fy * 700) < 1).length;
+  for (const [fx, fy] of [[0.78, 0.73], [0.22, 0.73], [0.48, 0.6], [0.22, 0.3], [0.78, 0.3]]) {
+    assert.ok(at(fx, fy) >= 10, `validation point ${fx},${fy} trained: ${at(fx, fy)} samples`);
+  }
+  assert.equal(report.trainedOnValidation, 5);
+  // The number still comes from predictions taken before training on that point.
+  assert.ok(Math.abs(report.accuracyPx - Math.hypot(90, 40)) < 0.01);
 });
 
 test('a jittery prediction still completes validation instead of waiting for a stable gaze forever', async () => {
@@ -126,4 +146,16 @@ test('Escape during validation restores the previous calibration and removes the
   assert.equal(report.cancelled, true);
   assert.equal(model, previousModel);
   assert.equal(overlay.isConnected, false);
+});
+
+test('refine runs another round on new points over the same model, and reports before → after', async () => {
+  const { report, refined, added, model } = await simulateCalibration({ refine: true });
+  assert.equal(refined.ok, true);
+  assert.equal(refined.round, 2);
+  assert.equal(refined.points.length, 5);
+  assert.deepEqual(refined.points.map(p => [p.x / 1000, p.y / 700].map(v => +v.toFixed(2))), VAL_SETS[1]);
+  assert.equal(refined.previousAccuracyPx, report.accuracyPx);
+  assert.equal(refined.trainedOnValidation, 10);
+  assert.ok(added >= 50, 'refine adds samples to the existing model instead of replacing it: ' + added);
+  assert.ok(model.samples.length > added);
 });
