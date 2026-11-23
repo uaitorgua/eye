@@ -7,7 +7,7 @@
 //
 //   headOffset(positions)                   → { yaw, pitch, size } | null
 //   oneEuro({ minCutoff, beta })            → фільтр 1€ (Casiez та ін., CHI 2012)
-//   createHeadPointer()                     → .setNeutral(offset), .update(offset, tMs, { w, h, sens, invertX }) → { x, y } | null
+//   createHeadPointer()                     → .setNeutral(offset), .update(offset, tMs, { w, h, sens, invertX, rest }) → { x, y, resting } | null
 
 // Індекси точок MediaPipe FaceMesh: кінчик носа, краї обличчя на рівні вилиць, верх лоба, підборіддя.
 export const LM = { nose: 1, left: 234, right: 454, top: 10, chin: 152 };
@@ -50,15 +50,69 @@ const REANCHOR_STEP = 0.05;  // не більше за кадр, щоб разо
 // Біля центру рух повільніший (точність для тексту й кнопок), до країв — швидший.
 export const curve = (v) => v * (0.6 + 0.4 * Math.min(1, Math.abs(v)));
 
-export function createHeadPointer({ range = RANGE, minCutoff = 0.5, beta = 2.5 } = {}) {
+// «Зона відпочинку»: опустіть голову помітно нижче, ніж треба для нижнього краю екрана, —
+// вказівник завмирає там, де був ДО кивка, і нічого не натискається. Підніміть голову — керування повертається.
+// Пороги — у частках RANGE.pitch і НЕ залежать від чутливості: це фізичний кут (≈ 2,2 × 8° ≈ 18° вниз).
+export const REST = { enter: 2.2, exit: 0.8, enterMs: 300, exitMs: 350 };
+const HIST_MS = 1500;        // скільки історії тримаємо, щоб знайти, де вказівник був перед кивком
+const NOD_TOL = 0.15;        // шум трекера по pitch (у частках RANGE.pitch), який не вважаємо рухом
+
+export function createHeadPointer({ range = RANGE, minCutoff = 0.5, beta = 2.5, rest: restCfg = REST } = {}) {
   const fx = oneEuro({ minCutoff, beta }), fy = oneEuro({ minCutoff, beta });
   let neutral = null;
+  let hist = [];                       // { t, pitch, x, y, neutral } — останні HIST_MS
+  let resting = null, enterSince = 0, exitSince = 0;
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+  // Де почався кивок униз: ідемо назад по історії, поки pitch був не вищим (з допуском), і беремо мінімум.
+  const nodStart = () => {
+    let i = hist.length - 1, min = i;
+    while (i > 0 && hist[i - 1].pitch <= hist[min].pitch + NOD_TOL * range.pitch) {
+      i--;
+      if (hist[i].pitch < hist[min].pitch) min = i;
+    }
+    return hist[min];
+  };
+
+  // Повертає true, поки людина «відпочиває». Логіка з гістерезисом і затримками, щоб не блимало.
+  const stepRest = (o, tMs) => {
+    if (!restCfg) return false;
+    if (!resting) {
+      // Кут рахуємо від «нуля», який був ДО кивка: за краєм екрана «нуль» повзе за головою,
+      // і без цього швидкий кивок ніколи б не дотягнув до порога.
+      const s = hist.length ? nodStart() : null;
+      const dp = (o.pitch - (s ? s.neutral.pitch : neutral.pitch)) / range.pitch;
+      if (dp > restCfg.enter) {
+        if (!enterSince) enterSince = tMs;
+        if (tMs - enterSince >= restCfg.enterMs && s) {
+          // Поки голова їхала вниз за край, «нуль» міг поповзти слідом — повертаємо той, що був до кивка.
+          neutral = { ...s.neutral };
+          resting = { x: s.x, y: s.y };
+          exitSince = 0;
+        }
+      } else enterSince = 0;
+    } else {
+      const back = (o.pitch - neutral.pitch) / range.pitch < restCfg.exit;
+      if (back) {
+        if (!exitSince) exitSince = tMs;
+        if (tMs - exitSince >= restCfg.exitMs) { resting = null; enterSince = 0; hist = []; fx.reset(); fy.reset(); }
+      } else exitSince = 0;
+    }
+    return !!resting;
+  };
+
   return {
     get neutral() { return neutral && { ...neutral }; },
-    setNeutral(o) { neutral = o ? { yaw: o.yaw, pitch: o.pitch } : null; fx.reset(); fy.reset(); },
-    update(o, tMs, { w, h, sens = 1, invertX = false } = {}) {
+    get resting() { return !!resting; },
+    setNeutral(o) {
+      neutral = o ? { yaw: o.yaw, pitch: o.pitch } : null;
+      fx.reset(); fy.reset(); hist = []; resting = null; enterSince = exitSince = 0;
+    },
+    update(o, tMs, { w, h, sens = 1, invertX = false, rest = true } = {}) {
       if (!neutral || !o) return null;
+      if (!rest && resting) { resting = null; fx.reset(); fy.reset(); }
+      if (rest && stepRest(o, tMs)) return { x: resting.x, y: resting.y, resting: true };
+      const before = { ...neutral };
       // Камера бачить людину «навпроти»: поворот праворуч зсуває ніс ліворуч у кадрі, тому знак мінус.
       const sx = invertX ? 1 : -1;
       let nx = sx * (o.yaw - neutral.yaw) / range.yaw * sens;
@@ -71,10 +125,14 @@ export function createHeadPointer({ range = RANGE, minCutoff = 0.5, beta = 2.5 }
       if (oy) neutral.pitch += oy * range.pitch / sens;
       nx = fx.filter(clamp(nx, -LIMIT, LIMIT), tMs);
       ny = fy.filter(clamp(ny, -LIMIT, LIMIT), tMs);
-      return {
+      const pt = {
         x: clamp(w / 2 * (1 + curve(nx)), 0, w - 1),
         y: clamp(h / 2 * (1 + curve(ny)), 0, h - 1),
+        resting: false,
       };
+      hist.push({ t: tMs, pitch: o.pitch, x: pt.x, y: pt.y, neutral: before });
+      while (hist.length && tMs - hist[0].t > HIST_MS) hist.shift();
+      return pt;
     },
   };
 }

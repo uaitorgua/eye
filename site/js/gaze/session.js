@@ -12,8 +12,31 @@ import { onDrift, resetDrift } from './drift.js';
 import { startHead, recenterHead } from './head.js';
 import { showCalibrationReport } from '../ui/calib-report.js';
 import { cue } from '../core/cue.js';
+import { saveProfile, loadProfile, listProfiles, describeProfile, SLOTS, slotKey } from './calib-store.js';
+import { setLastReport, lastReport, refineCalibration } from './calibration.js';
+import { openProfiles, saveToSlot } from '../ui/calib-profiles.js';
 
 let els = {};
+
+// Те, що зберігається разом із моделлю погляду: звіт точності та підібраний під нього «магніт».
+const currentCalibration = () => ({ report: lastReport(), snap: store.settings.snap });
+
+// Увімкнути збережене калібрування: модель, «магніт», звіт для виявлення дрейфу, статус.
+async function useProfile(key, { quiet = false } = {}) {
+  let meta = null;
+  try { meta = await loadProfile(key); } catch { /* сховище недоступне */ }
+  if (!meta) return null;
+  if (meta.snap != null) updateSettings({ snap: meta.snap });
+  if (meta.report) setLastReport(meta.report);
+  resetDrift();
+  if (key !== 'last') saveProfile('last', { name: meta.name, report: meta.report, snap: meta.snap }).catch(() => {});
+  const what = meta.name ? 'профіль «' + meta.name + '»' : meta.report?.grade ? 'точність ' + meta.report.grade.label : 'калібрування відновлено';
+  emit('cam-status', { text: 'Камера працює · ' + what, ok: true });
+  if (!quiet) toast('Увімкнено ' + (meta.name ? 'профіль «' + meta.name + '»' : 'збережене калібрування'), 3500);
+  return meta;
+}
+
+const profilesDialog = () => openProfiles({ hasCalibration, current: currentCalibration, apply: (key) => useProfile(key) });
 
 export function initGazeSession(elements = {}) {
   els = elements;
@@ -26,17 +49,33 @@ export function initGazeSession(elements = {}) {
   // Калібрування «пливе» з часом. Коли систематичне зміщення стає помітним,
   // делікатно пропонуємо перекалібруватися (не частіше ніж раз на 5 хвилин).
   onDrift(() => {
-    toast('Можливо, погляд змістився. Якщо керувати стало складніше, спробуйте перекалібрувати.', 9000);
+    toast('Можливо, погляд змістився. Якщо керувати стало складніше, відкрийте Налаштування → «Калібрувати» або «Профілі погляду».', 9000);
   });
 
   on('choose-mode', chooseMode);
   on('choose-camera', chooseCamera);
   on('calibrate', runCalibration);
+  on('calib-profiles', async () => {
+    if (store.settings.mode !== 'webcam') return toast('Профілі потрібні лише в режимі камери');
+    if (!cam.ready && !((await prepareCameraPermission()) && (await startWebcam()))) return;
+    profilesDialog();
+  });
+  // Світла рамка довкола екрана — додаткове світло на обличчя (дослід з освітленням, docs/man-notes.md §5.3).
+  // Клас на <html>, а не на <body>: body::after уже зайнятий написом «Пауза», і рамка його перекривала.
+  const frame = () => document.documentElement.classList.toggle('light-frame', !!store.settings.lightFrame && store.settings.mode !== 'mouse');
+  on('settings-changed', frame);
+  frame();
   on('toggle-pause', () => {
     store.paused = !store.paused;
     document.body.classList.toggle('paused', store.paused);
     const label = els.pauseBtn?.querySelector('.tile-label');
     if (label) label.textContent = store.paused ? 'Продовжити' : 'Пауза';
+    // Усі кнопки паузи (тулбар, читанка, браузер, Тетріс): під час паузи — значок «▶», а не «‖».
+    for (const btn of document.querySelectorAll('#btn-pause, #rd-pause, #br-pause, #tz-pause')) {
+      btn.querySelector('.ui-icon')?.style.setProperty('--icon', `url(../assets/icons/${store.paused ? 'play' : 'pause'}.svg)`);
+    }
+    const home = document.querySelector('#home-pause .home-control-icon path');
+    if (home) home.setAttribute('d', store.paused ? 'M8 5l11 7-11 7z' : 'M8 5v14M16 5v14');
     emit('pause-changed', store.paused);
   });
   els.calibBtn?.addEventListener('dwell', runCalibration);
@@ -77,14 +116,39 @@ async function runCalibration() {
   }
 
   resetDrift();            // нова калібровка — лічильник дрейфу починаємо спочатку
+  return afterCalibration(r);
+}
 
-  // «Магніт» підбираємо під ВИМІРЯНУ точність, і саме за найгіршою точкою:
-  // кнопки часто скраю екрана, а там похибка найбільша.
-  const basePx = Math.round(r.worstPx != null ? r.worstPx : r.accuracyPx);
-  updateSettings({ snap: Math.min(220, Math.max(40, Math.round(basePx * 0.9))) });
-
-  emit('cam-status', { text: 'Камера працює · точність ' + r.grade.label, ok: true });
-  if (await showCalibrationReport(r, { snap: store.settings.snap })) runCalibration();
+// Звіт і «Уточнити»: кожен раунд — ще 5 синіх точок поверх поточної моделі (міряємо, потім учимо).
+async function afterCalibration(r) {
+  for (;;) {
+    // «Магніт» підбираємо під ВИМІРЯНУ точність, і саме за найгіршою точкою:
+    // кнопки часто скраю екрана, а там похибка найбільша.
+    const basePx = Math.round(r.worstPx != null ? r.worstPx : r.accuracyPx);
+    updateSettings({ snap: Math.min(220, Math.max(40, Math.round(basePx * 0.9))) });
+    emit('cam-status', { text: 'Камера працює · точність ' + r.grade.label, ok: true });
+    // Запам'ятовуємо модель самі: після перезавантаження сторінки калібрувати знову не доведеться.
+    const shown = r;
+    saveProfile('last', { report: shown, snap: store.settings.snap }).catch(() => {});
+    const next = await showCalibrationReport(shown, {
+      snap: store.settings.snap,
+      onSave: () => saveToSlot({ current: () => ({ report: shown, snap: store.settings.snap }) }),
+    });
+    if (next === 'again') return runCalibration();
+    if (next !== 'refine') return;
+    const rr = await refineCalibration({
+      previous: shown, round: (shown.round || 1) + 1,
+      onStatus: (text) => emit('cam-status', { text }), sound: store.settings.sound, eyesStop: store.settings.eyesStop,
+    });
+    if (rr.cancelled) {
+      emit('cam-status', { text: 'Камера працює', ok: true });
+      if (rr.reason === 'eyes') cue('calib_stopped', 'Уточнення зупинено. Можна розплющити очі.');
+      toast('Уточнення зупинено. Зібрані точки лишились у моделі.', 6000);
+      return;
+    }
+    if (!rr.ok) { toast(rr.error || 'Уточнення не вдалося', 7000); continue; }   // знову показуємо попередній звіт
+    r = rr;
+  }
 }
 
 async function chooseMode() {
@@ -125,15 +189,16 @@ async function prepareCameraPermission() {
   const state = await cameraPermission();
   if (state === 'granted') return true;
   if (state === 'denied') {
-    const next = await choose(SITE_BLOCKED_HELP, [
-      { label: 'Оновити сторінку', icon: '🔄', value: 'reload', cls: 'ok' },
-      { label: 'Перейти на мишу', icon: '🖱', value: 'mouse' }], { cols: 2, cancel: false });
+    const next = await choose('Камеру заблоковано', [
+      { label: 'Оновити сторінку', icon: '🔄', value: 'reload', cls: 'ok', sub: 'Після того як дозволите камеру' },
+      { label: 'Перейти на мишу', icon: '🖱', value: 'mouse', sub: 'Працювати без камери' }], { cols: 2, cancel: false, subtitle: SITE_BLOCKED_HELP });
     if (next === 'reload') location.reload();
     else { updateSettings({ mode: 'mouse' }); applyMode(); }
     return false;
   }
-  await choose('Зараз браузер попросить доступ до камери. Натисніть «Дозволити» у вікні вгорі сторінки', [
-    { label: 'Зрозуміло', icon: '📷', value: true, cls: 'ok' }], { cols: 1, cancel: false });
+  await choose('Потрібен доступ до камери', [
+    { label: 'Зрозуміло', icon: '📷', value: true, cls: 'ok' }], { cols: 1, cancel: false,
+    subtitle: 'Зараз браузер покаже невелике вікно вгорі сторінки. Натисніть у ньому «Дозволити». Відео нікуди не надсилається: воно обробляється лише на цьому комп’ютері.' });
   return true;
 }
 
@@ -150,16 +215,25 @@ async function applyMode() {
     if (els.calibBtn) els.calibBtn.hidden = false;
     if (!cam.ready && !(await prepareCameraPermission())) return;
     if (!cam.ready && !(await startWebcam())) return;
+    // Повертаємо останнє вдале калібрування з минулого сеансу (якщо модель ще порожня).
+    let profiles = {};
+    try { profiles = await listProfiles(); } catch { /* приватне вікно: працюємо без збережених профілів */ }
+    if (!hasCalibration() && profiles.last) await useProfile('last', { quiet: true });
+    const saved = SLOTS.some(n => profiles[slotKey(n)]);
     if (store.settings.autoCalibrate) {
-      // Offer reuse only if WebGazer has a calibration model loaded.
-      if (!hasCalibration()) return runCalibration();
-      const again = await choose('Калібрувати знову?', [
-        { label: 'Продовжити', icon: '✓', value: false, cls: 'ok', sub: 'Попереднє калібрування' },
-        { label: 'Калібрувати', icon: '🎯', value: true, sub: 'Кружечок для стеження' },
-      ], { cols: 2, cancel: false, subtitle: 'Якщо точка погляду влучає добре, можна одразу продовжити.' });
-      if (again) runCalibration();
+      // Без жодного збереженого калібрування вибирати нема з чого — одразу калібруємо.
+      if (!hasCalibration() && !saved) return runCalibration();
+      const next = await choose(hasCalibration() ? 'Калібрувати знову?' : 'З чого почнемо?', [
+        ...(hasCalibration() ? [{ label: 'Продовжити', icon: '✓', value: 'go', cls: 'ok', sub: profiles.last ? describeProfile(profiles.last) : 'Попереднє калібрування' }] : []),
+        ...(saved ? [{ label: 'Профілі', icon: '🔖', value: 'profiles', sub: 'Збережені калібрування' }] : []),
+        { label: 'Калібрувати', icon: '🎯', value: 'calibrate', sub: 'Кружечок для стеження' },
+      ], { cols: 3, cancel: false, subtitle: 'Якщо точка погляду влучає добре, можна одразу продовжити.' });
+      if (next === 'calibrate') runCalibration();
+      else if (next === 'profiles' && !(await profilesDialog()) && !hasCalibration()) runCalibration();
     }
-    else toast('Камера працює. Якщо точка погляду «гуляє» — натисніть 🎯', 4000);
+    else toast(hasCalibration()
+      ? 'Камера працює. Якщо точка погляду «гуляє» — відкрийте Налаштування → «Калібрувати»'
+      : 'Камера працює, але погляд ще не відкалібровано: Налаштування → «Калібрувати»', 6000);
   } else {
     if (els.calibBtn) els.calibBtn.hidden = true;
     emit('cam-status', { text: 'Режим: миша / трекер', ok: true });

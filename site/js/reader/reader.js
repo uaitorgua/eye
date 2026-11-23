@@ -14,6 +14,7 @@ import * as books from './book-store.js';
 const LAST_BOOK = 'eyeflow.lastBook';
 const $ = (id) => document.getElementById(id);
 
+const broken = new Set();      // книги, які не вдалося відкрити в цьому сеансі
 let view, section, currentId = null, gx = -1, gy = -1, pointerAt = -Infinity, saveTimer, libraryModal;
 const scroller = createEdgeScroller();
 // Тло сторінок: звичайне, тепле (менше відблиску) і темне (для чутливих до яскравого світла).
@@ -36,8 +37,8 @@ export function initReader({ standalone: alone = false } = {}) {
   bind('rd-zoom-in', () => view.zoomBy(1.25));
   bind('rd-fit', () => view.applyZoom(1));
   // «Назад»: якщо сторінку вже прокручено — на її початок, інакше на попередню.
-  bind('rd-prev', () => { const p = view.position(); view.goToPage(p.frac > 0.05 ? p.page : p.page - 1); });
-  bind('rd-next', () => view.goToPage(view.position().page + 1));
+  bind('rd-prev', () => { const p = view.position(); turnTo(p.frac > 0.05 ? p.page : p.page - 1); });
+  bind('rd-next', () => turnTo(view.position().page + 1));
   bind('rd-auto', () => updateSettings({ readerAutoScroll: !store.settings.readerAutoScroll }));
   bind('rd-pause', () => emit('toggle-pause'));
   bind('rd-theme', () => {
@@ -63,12 +64,46 @@ export function initReader({ standalone: alone = false } = {}) {
   section.addEventListener('drop', (e) => { e.preventDefault(); addFiles(e.dataTransfer.files); });
 
   renderBar();
-  if (standalone || location.hash === '#books') openReader();
+  // Клавіатура (і для помічника, і для перемикачів-кнопок, що імітують клавіші).
+  document.addEventListener('keydown', onKey);
+
+  if (standalone || location.hash === '#books' || location.hash === '#/books') openReader();
+}
+
+function onKey(e) {
+  if (section.classList.contains('hidden') || e.altKey || e.ctrlKey || e.metaKey) return;
+  if (document.querySelector('#modal-layer > .modal, [data-gaze-block]')) return;
+  if (e.target?.closest?.('input, textarea, select')) return;
+  const el = $('reader-view'), inView = el.contains(e.target);
+  const onButton = e.target?.closest?.('button');
+  const scroll = (top) => el.scrollBy({ top, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  let done = true;
+  switch (e.key) {
+    case 'Escape': if (standalone) openStandaloneMenu(); else $('rd-exit').dispatchEvent(new CustomEvent('dwell', { bubbles: true })); break;
+    case '+': case '=': view.zoomBy(1.25); break;
+    case '-': case '_': view.zoomBy(1 / 1.25); break;
+    case '0': view.applyZoom(1); break;
+    // Поза сторінками (фокус на кнопці рейки) браузер сам не гортає — робимо це тут.
+    case 'PageDown': if (inView) done = false; else scroll(el.clientHeight * 0.85); break;
+    case 'PageUp': if (inView) done = false; else scroll(-el.clientHeight * 0.85); break;
+    case 'ArrowDown': if (inView) done = false; else scroll(60); break;
+    case 'ArrowUp': if (inView) done = false; else scroll(-60); break;
+    // Стрілки вбік — сторінка вперед/назад, якщо збільшена сторінка не потребує прокрутки вбік.
+    case 'ArrowRight': if (view.canScrollX && inView) done = false; else $('rd-next').dispatchEvent(new CustomEvent('dwell')); break;
+    case 'ArrowLeft': if (view.canScrollX && inView) done = false; else $('rd-prev').dispatchEvent(new CustomEvent('dwell')); break;
+    case 'Home': if (inView || onButton) view.goToPage(1); else done = false; break;
+    case 'End': if (inView || onButton) view.goToPage(view.pageCount); else done = false; break;
+    default: done = false;
+  }
+  if (done) e.preventDefault();
 }
 
 export async function openReader() {
   section.classList.remove('hidden');
-  if (currentId) return;
+  // Меню під читанкою — недосяжне для клавіатури й читача екрана, поки читаємо.
+  const home = $('home-section');
+  if (home && !standalone) home.inert = true;
+  if (currentId) { focusView(); return; }
   try {
     const last = localStorage.getItem(LAST_BOOK);
     if (last && await books.getBook(last)) return openBook(last);
@@ -90,12 +125,35 @@ async function openStandaloneMenu() {
 }
 
 export function closeReader() {
+  clearTimeout(saveTimer);
   saveNow();
   setDotDim(false);           // повертаємо яскраву точку за межами читанки
   section.querySelector('.rd-rail').classList.remove('more');
   $('rd-more').querySelector('.tile-label').textContent = 'Ще';
   section.classList.add('hidden');
+  const home = $('home-section');
+  if (home && !standalone) {
+    home.inert = false;
+    if (section.contains(document.activeElement) || document.activeElement === document.body) home.querySelector('[data-system="books"]')?.focus({ preventScroll: true });
+  }
   if (!standalone && location.hash === '#/books') history.replaceState(null, '', '#/');
+}
+
+// Перехід на сторінку кнопкою: коротка табличка «Стор. N» посередині — видно, що сталось і де ти тепер.
+function turnTo(n) {
+  if (!view.doc) return;
+  const page = Math.min(view.pageCount, Math.max(1, n));
+  view.goToPage(page);
+  let pill = section.querySelector('.rd-page-pill');
+  if (!pill) { pill = h('div', { class: 'rd-page-pill', 'aria-hidden': 'true' }); section.querySelector('.rd-reading').appendChild(pill); }
+  pill.textContent = page === view.pageCount && n > view.pageCount ? 'Остання сторінка' : `Стор. ${page} з ${view.pageCount}`;
+  pill.classList.remove('show'); void pill.offsetWidth; pill.classList.add('show');
+}
+
+// Фокус на сторінках — щоб PageDown, стрілки й пробіл одразу гортали книгу.
+function focusView() {
+  if (document.querySelector('#modal-layer > .modal')) return;
+  requestAnimationFrame(() => $('reader-view').focus({ preventScroll: true }));
 }
 
 // ---------- прокрутка поглядом ----------
@@ -148,9 +206,11 @@ function setHints(zone, ready) {
 
 // ---------- стан панелі ----------
 function onViewChange() {
-  if (!view.doc) return;
+  // Сховану читанку не зберігаємо: її розміри нульові, і місце читання вийшло б хибним.
+  if (!view.doc || section.classList.contains('hidden') || !$('reader-view').clientHeight) return;
   const { page } = view.position();
   $('rd-page').textContent = `стор. ${page} з ${view.pageCount}`;
+  if (page !== lastPage) { lastPage = page; announce(`Сторінка ${page} з ${view.pageCount}`); }
   // Смужка прогресу під назвою і стан смуг на початку/в кінці книги.
   const el = $('reader-view'), max = el.scrollHeight - el.clientHeight;
   section.style.setProperty('--read-progress', max > 0 ? Math.min(1, el.scrollTop / max).toFixed(4) : 0);
@@ -161,10 +221,18 @@ function onViewChange() {
   saveTimer = setTimeout(saveNow, 800);
 }
 
+let lastPage = 0, announceTimer;
+// Читач екрана чує номер сторінки, лише коли вона змінилась, і не частіше ніж раз на 0,6 с.
+function announce(text) {
+  clearTimeout(announceTimer);
+  announceTimer = setTimeout(() => { const live = $('rd-live'); if (live) live.textContent = text; }, 600);
+}
+
 function setBandEnd(z, atEnd, endLabel, label) {
   const band = $('rd-hint-' + z);
   if (band.classList.contains('at-end') === atEnd) return;
   band.classList.toggle('at-end', atEnd);
+  band.setAttribute('aria-disabled', String(atEnd));
   band.querySelector('.rd-band-label').textContent = atEnd ? endLabel : label;
 }
 
@@ -186,13 +254,16 @@ function renderBar() {
 
 // ---------- книги ----------
 async function openBook(id) {
+  const before = { title: $('rd-title').textContent, page: $('rd-page').textContent };
   try {
     const book = await books.getBook(id);
     if (!book) throw new Error('Book not found');
     saveNow();
     $('rd-title').textContent = book.name;
+    $('rd-title').title = book.name;            // повна назва при наведенні, якщо обрізана
     $('rd-page').textContent = 'Відкриваю…';
     const pages = await view.open(await book.data.arrayBuffer());
+    broken.delete(id);
     currentId = id;
     try { localStorage.setItem(LAST_BOOK, id); }
     catch { toast('Книгу відкрито, але браузер не запам’ятає її для наступного разу.', 6000); }
@@ -200,12 +271,21 @@ async function openBook(id) {
     const p = await books.getProgress(id).catch(() => { toast('Не вдалося відновити місце читання.', 6000); return null; });
     if (p) { view.applyZoom(p.zoom || 1); view.setPosition(p); }
     onViewChange();
+    if (p && (p.page > 1 || p.frac > 0.02)) toast(`Продовжуємо з того місця, де зупинились: стор. ${p.page}`, 3500);
+    focusView();
   } catch (e) {
     console.error(e);
-    currentId = null;
-    $('rd-title').textContent = 'Книги';
-    $('rd-page').textContent = '';
-    toast('Не вдалося відкрити PDF. Перевірте файл або оберіть іншу книгу.', 6000);
+    broken.add(id);
+    if (currentId && view.doc) {
+      // Попередня книга лишилась відкритою (новий файл не завантажився) — повертаємо її назву.
+      $('rd-title').textContent = before.title;
+      $('rd-page').textContent = before.page;
+    } else {
+      currentId = null;
+      $('rd-title').textContent = 'Книги';
+      $('rd-page').textContent = '';
+    }
+    toast('Не вдалося відкрити цей PDF: файл пошкоджений або не є PDF. Оберіть іншу книгу.', 6000);
     openLibrary();
   }
 }
@@ -283,7 +363,8 @@ async function openLibrary() {
     const count = Math.max(1, Math.ceil(list.length / pageSize));
     const items = list.slice(page * pageSize, (page + 1) * pageSize).map(b => {
       const p = progress[b.id];
-      const sub = deleting ? 'Обрати для видалення' : b.pages ? `Стор. ${p?.page || 1} з ${b.pages}` : 'Відкрити';
+      const sub = deleting ? 'Обрати для видалення' : broken.has(b.id) ? 'Файл пошкоджено — краще видалити'
+        : b.pages ? `Стор. ${p?.page || 1} з ${b.pages}` : 'Відкрити';
       const bookTile = tile(b.name, async () => {
         if (!deleting) { closeLibrary(); return openBook(b.id); }
         if (!await choose('Видалити «' + b.name + '»?', [{ label: 'Так, видалити', value: true, cls: 'danger' }], { cols: 2 })) return;
@@ -294,6 +375,9 @@ async function openLibrary() {
         } catch (e) { console.error(e); toast('Не вдалося видалити книгу. Спробуйте ще раз.', 6000); }
       }, { sub, cls: 'book' });
       bookTile.setAttribute('data-book-id', b.id);
+      if (broken.has(b.id)) bookTile.classList.add('broken');
+      // Скільки прочитано — тонка смужка внизу плитки.
+      if (b.pages && p?.page) bookTile.style.setProperty('--book-progress', Math.min(1, (p.page - 1 + (p.frac || 0)) / b.pages).toFixed(3));
       return bookTile;
     });
     const content = list.length ? h('div', { class: 'library-books' }, ...items) : emptyShelf();

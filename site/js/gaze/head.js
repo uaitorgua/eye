@@ -7,18 +7,19 @@ import { headOffset, createHeadPointer, median } from './head-pose.js';
 import { h, toast } from '../ui/dom.js';
 import { watchEyesStop } from './eyes-stop.js';
 import { cue } from '../core/cue.js';
+import { setResting } from './dwell.js';
 
 const POLL_MS = 33;
 const HOLD_MS = 1400;        // скільки тримати голову рівно під час центрування
 const GIVE_UP_MS = 20000;
 
 const hp = createHeadPointer();
-export const head = { ok: false, centred: false };
+export const head = { ok: false, centred: false, resting: false };
 
 let timer = null, latest = null, latestAt = 0, lastKey = '', centring = null;
 
 function tick() {
-  if (store.settings.mode !== 'head') return;
+  if (store.settings.mode !== 'head') { if (head.resting) announceRest(false); return; }
   const now = performance.now();
   const pos = window.webgazer?.getTracker?.()?.getPositions?.();
   const o = headOffset(pos);
@@ -31,8 +32,33 @@ function tick() {
   head.ok = true; latest = o; latestAt = now;
   if (centring) return;                 // під час центрування вказівник не рухаємо
   const s = store.settings;
-  const pt = hp.update(o, now, { w: innerWidth, h: innerHeight, sens: s.headSensitivity || 1, invertX: !!s.headMirror });
-  if (pt) feedHead(pt.x, pt.y);
+  const pt = hp.update(o, now, { w: innerWidth, h: innerHeight, sens: s.headSensitivity || 1, invertX: !!s.headMirror, rest: s.headRest !== false });
+  if (!pt) return;
+  if (pt.resting !== head.resting) announceRest(pt.resting);
+  feedHead(pt.x, pt.y);
+}
+
+// Вхід/вихід із зони відпочинку: тихий сигнал, щоб людина знала, що кліки вимкнено / знову ввімкнено.
+export function announceRest(on) {
+  head.resting = on;
+  setResting(on);
+  document.dispatchEvent(new CustomEvent('head-rest', { detail: { resting: on } }));
+  if (store.settings.sound) restTone(on);
+}
+
+let actx;
+function restTone(on) {
+  try {
+    actx ||= new AudioContext();
+    const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime;
+    // Вниз — «засинає», вгору — «прокидається».
+    o.frequency.setValueAtTime(on ? 520 : 390, t);
+    o.frequency.exponentialRampToValueAtTime(on ? 390 : 520, t + 0.18);
+    g.gain.setValueAtTime(0.05, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    o.connect(g).connect(actx.destination);
+    o.start(t); o.stop(t + 0.23);
+  } catch { /* без звуку */ }
 }
 
 export function startHead() {
@@ -64,6 +90,7 @@ export function recenterHead() {
       const done = () => { el.remove(); centring = null; resolve(ok); };
       if (!ok) return done();
       hp.setNeutral({ yaw: median(samples.map(s => s.yaw)), pitch: median(samples.map(s => s.pitch)) });
+      if (head.resting) announceRest(false);
       head.centred = true;
       el.classList.add('done');
       title.textContent = 'Готово';

@@ -6,10 +6,10 @@
 <title>Читанка PDF — керування очима</title>
 <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg">
 <meta name="theme-color" content="#f7f4ec">
-<link rel="stylesheet" href="css/base.css?v=20261112a">
-<link rel="stylesheet" href="css/modals.css?v=20261112a">
-<link rel="stylesheet" href="css/reader.css?v=20261112a">
-<link rel="stylesheet" href="css/system.css?v=20261112a">
+<link rel="stylesheet" href="css/base.css?v=20261119a">
+<link rel="stylesheet" href="css/modals.css?v=20261119a">
+<link rel="stylesheet" href="css/reader.css?v=20261119a">
+<link rel="stylesheet" href="css/system.css?v=20261119a">
 <script src="lib/webgazer.js"></script>
 </head>
 <body>
@@ -38,12 +38,13 @@
       <button class="tile rd-more" id="rd-more" data-dwell><span class="tile-icon"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/ellipsis.svg)"></span></span><span class="tile-label">Ще</span></button>
     </nav>
     <button class="rd-scroll-band rd-scroll-down" id="rd-hint-bottom" type="button" aria-label="Прокрутити вниз" data-gaze-scroll="bottom"><span class="rd-band-pill"><span class="ui-icon" aria-hidden="true" style="--icon:url(../assets/icons/chevrons-down.svg)"></span><span class="rd-band-label">Вниз</span></span></button>
+    <p id="rd-live" class="sr-only" aria-live="polite"></p>
   </div>
 </section>
 
 <div id="modal-layer"></div>
 <div id="gaze-dot"><div class="ring"></div></div>
-<div id="toast" hidden></div>
+<div id="toast" role="status" aria-live="polite" hidden></div>
 
 <script>
   if (location.protocol === 'file:') {

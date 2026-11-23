@@ -95,18 +95,26 @@ async function openSites() {
   if (!sites.length) {
     try { sites = (await (await fetch('browser.php?sites')).json()).sites || []; }
     catch { sites = []; }
+    if (!sites.length) toast('Список сайтів недоступний: браузер працює лише на сервері сайту. Помічник може ввести адресу', 6000);
   }
   const choice = await choose('🔖 Куди підемо?', [
     ...sites.map((s) => ({ label: s.title, icon: s.icon || '🌐', sub: hostOf(s.url), value: s.url })),
     { label: 'Адреса (помічник)', icon: '⌨', sub: 'ввести на клавіатурі', value: '__address' },
   ], { cols: 3 });
-  if (!choice) return;
+  if (!choice) { if (!page) showEmpty(); return; }
   if (choice === '__address') {
     const typed = await keyboard('Адреса сайту', page ? page.url : 'https://');
     if (typed && typed.trim()) load(typed.trim());
     return;
   }
   load(choice);
+}
+
+// Порожній екран після «Скасувати»: пояснюємо, що далі, замість білої сторінки.
+function showEmpty() {
+  view.replaceChildren(h('div', { class: 'br-empty' },
+    h('p', { class: 'br-empty-title' }, 'Сторінку ще не відкрито'),
+    h('p', {}, 'Оберіть «Сайти» внизу екрана, щоб вибрати, куди піти.')));
 }
 
 // ---------- посилання ----------

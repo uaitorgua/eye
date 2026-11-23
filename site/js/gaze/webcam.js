@@ -18,7 +18,7 @@ window.fetch = (input, init) => {
 export const cam = { ready: false };
 
 // Інструкції, коли браузер уже не покаже вікно дозволу.
-export const SITE_BLOCKED_HELP = 'Камеру для цього сайту заблоковано в браузері. Chrome: значок ⓘ або 🔒 ліворуч від адреси → «Налаштування сайту» → Камера → «Дозволити», потім оновіть сторінку';
+export const SITE_BLOCKED_HELP = 'Камеру для цього сайту заблоковано в браузері. Chrome: значок ліворуч від адреси → «Налаштування сайту» → Камера → «Дозволити», потім оновіть сторінку';
 export const OS_BLOCKED_HELP = 'Камеру вимкнено в Windows. Пуск → Параметри → Конфіденційність і захист → Камера: увімкніть «Доступ до камери» та «Дозволити класичним програмам», потім оновіть сторінку';
 
 // Стан дозволу без запиту: 'granted' | 'prompt' | 'denied' | 'unknown' (Firefox/Safari не підтримують запит 'camera').
@@ -52,13 +52,22 @@ export async function startWebcam() {
     if (store.settings.cameraId) {
       wg.params.camConstraints = { video: { deviceId: { exact: store.settings.cameraId } } };
     }
+    // «Камера HD»: райдужка при 640×480 — ≈14 px, при 1920×1080 — ≈90 px (вимір 17.11.2026).
+    // Для відблиску це різниця між «нічого не видно» і «видно», тож налаштування зберігаємо.
+    if (store.settings.cameraHd) {
+      const video = { ...(wg.params.camConstraints?.video || { facingMode: 'user' }) };
+      wg.params.camConstraints = { video: { ...video, width: { ideal: 1920 }, height: { ideal: 1080 } } };
+    }
     await wg.setRegression('ridge')
       .setGazeListener((d) => { feedGaze(d ? d.x : null, d ? d.y : null); })
-      .saveDataAcrossSessions(true)
+      // Власне сховище WebGazer пише лише з його обробника кліків миші, який ми вимикаємо нижче.
+      // Модель між сеансами зберігає gaze/calib-store.js, тож подвійного завантаження не допускаємо.
+      .saveDataAcrossSessions(false)
       .applyKalmanFilter(true)
       .begin();
     wg.showPredictionPoints(false);
     wg.removeMouseEventListeners();   // кліки викладача не повинні псувати калібрування
+    await enableIrisPoints(wg);
     cam.ready = true;
     startBlinkDetection();
     emit('cam-status', { text: 'Камера працює', ok: true });
@@ -66,6 +75,26 @@ export async function startWebcam() {
   } catch (err) {
     console.error(err);
     emit('cam-status', { text: friendlyError(err), error: true });
+    return false;
+  }
+}
+
+// WebGazer вантажить модель райдужки, але викликає facemesh з predictIrises: false — і точки 468–477
+// ніколи не приходять. Через це мовчки не працювали: перевірка фіксації в калібруванні (fixation.js),
+// оцінка відстані й градусів (calibration.js geometry) і детектор відблиску (glint-live.js).
+// Вмикаємо райдужку в ТІЙ САМІЙ моделі трекера (бібліотеку не правимо): один прогін на кадр, як і раніше,
+// плюс маленька модель райдужки.
+export async function enableIrisPoints(wg = window.webgazer) {
+  try {
+    const model = await wg?.getTracker?.()?.model;
+    if (!model?.estimateFaces || model.estimateFaces.__iris) return false;
+    const orig = model.estimateFaces.bind(model);
+    // Налаштування «Точки райдужки» читаємо при кожному кадрі: для порівняння А/Б вистачає перемикача.
+    model.estimateFaces = (cfg = {}) => orig({ ...cfg, predictIrises: store.settings.irisPoints !== false });
+    model.estimateFaces.__iris = true;
+    return true;
+  } catch (err) {
+    console.warn('iris points unavailable', err);
     return false;
   }
 }

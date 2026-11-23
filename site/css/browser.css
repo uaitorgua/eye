@@ -17,9 +17,18 @@
 #browser-section .br-bar [data-dwell]::after { background: #1856d8; }
 #browser-section #br-links { border-color: #1856d8; }
 #browser-section #br-back:disabled { opacity: .55; }
+#br-view .br-empty { max-width: 32em; margin: 12vh auto 0; text-align: center; color: #46536c; font-size: clamp(18px, 2vw, 24px); }
+#br-view .br-empty-title { margin: 0 0 .4em; font: 700 1.4em/1.15 Georgia, serif; color: #152440; }
 @media (max-width: 760px) {
   .br-bar { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); height: min(200px, 34vh); gap: 6px; padding: 6px; }
   #browser-section .br-bar .tile { font-size: clamp(13px, 3.2vw, 17px); padding: 4px; }
   #browser-section .br-bar .tile-icon { font-size: 24px; }
   #br-view { padding-left: 18px; padding-right: 18px; }
+}
+/* Short landscape: one row of eight instead of two squashed rows of 52 px. */
+@media (max-height: 520px) {
+  .br-bar { grid-template-columns: repeat(8, minmax(0, 1fr)); grid-template-rows: 1fr; height: 76px; gap: 6px; padding: 6px; }
+  #browser-section .br-bar .tile { font-size: 13px; padding: 4px 2px; gap: 2px; }
+  #browser-section .br-bar .tile-icon { font-size: 20px; }
+  .br-top { min-height: 36px; padding: 4px 12px; }
 }

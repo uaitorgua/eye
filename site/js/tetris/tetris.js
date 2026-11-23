@@ -1,6 +1,8 @@
 ﻿// Тетріс з керуванням очима (dwell).
 // Логіка гри + рендеринг на canvas + інтеграція з DOM.
 import { store } from '../core/store.js';
+import { emit, on } from '../core/bus.js';
+import { toast } from '../ui/dom.js';
 import { onPointer } from '../gaze/pointer.js';
 
 // ═══════════════ Константи ═══════════════
@@ -286,10 +288,16 @@ function startGame() {
 }
 
 // Секція накриває весь екран (position: fixed), програма під нею не зникає.
+// Незакінчена гра чекає: випадковий погляд на «Меню» поруч зі стрілкою не має її знищувати.
 export function openTetris() {
   els.section.classList.remove('hidden');
   resize();
-  startGame();
+  if (board && !gameOver && current) {
+    lastDrop = performance.now();
+    if (animId) cancelAnimationFrame(animId);
+    animId = requestAnimationFrame(loop);
+    toast('Гру продовжено', 2500);
+  } else startGame();
 }
 
 export function closeTetris() {
@@ -321,6 +329,14 @@ export function initTetris() {
   };
 
   bindDwell('btn-tetris-exit',   closeTetris);
+  bindDwell('tz-pause', () => emit('toggle-pause'));
+  on('pause-changed', (paused) => {
+    const btn = document.getElementById('tz-pause');
+    if (!btn) return;
+    btn.querySelector('.tile-label').textContent = paused ? 'Далі' : 'Пауза';
+    btn.querySelector('.ui-icon')?.style.setProperty('--icon', `url(../assets/icons/${paused ? 'play' : 'pause'}.svg)`);
+    btn.classList.toggle('active', paused);
+  });
   bindDwell('btn-tetris-overlay-exit', closeTetris);
   bindDwell('btn-tetris-restart', () => { document.getElementById('tetris-overlay')?.classList.add('hidden'); startGame(); });
 

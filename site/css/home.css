@@ -136,3 +136,38 @@
   .home-breaks { padding-top: 8px; }
   #home-section .home-bar .tile { min-height: 54px; padding: 10px 20px; }
 }
+
+/* Short screens (landscape phone, laptop at 200% zoom): every target must fit without scrolling, because a
+   gaze user cannot scroll the menu. The generic .tile min-height (96px) made rows overflow into each other,
+   so tiles here size to their row instead, and decoration goes first. */
+@media (max-height: 560px) {
+  #home-section .home-grid .home-tile { min-height: 0; }
+  .home-grid { min-height: 0; }
+  .home-break-copy { display: none; }
+  .home-breaks { grid-template-columns: 1fr 1fr; padding-top: 8px; }
+  .home-breaks .home-arrow { display: none; }
+}
+@media (max-height: 440px) {
+  #home-section { gap: 8px; padding: 10px 16px; }
+  .home-head { gap: 12px; }
+  .home-brand { font-size: 16px; padding-bottom: 3px; }
+  .home-brand span:not(.home-brand-line) { font-size: 22px; }
+  /* The heading stays for screen readers (the section is labelled by it), but not on screen. */
+  .home-intro { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .home-grid { grid-template-columns: 1.1fr 1fr 1fr; grid-template-rows: 1fr; gap: 10px; }
+  #home-section .books { grid-row: auto; grid-column: auto; padding: 12px 16px; }
+  #home-section .books:before { inset: 5px; }
+  .home-book-art, .home-book-cta, #home-section .home-grid .tile-sub, #home-section .home-grid .home-arrow { display: none; }
+  #home-section .books .tile-label { font-size: 32px; }
+  #home-section .flow, #home-section .browser { flex-direction: column; justify-content: center; align-items: flex-start; gap: 6px; padding: 10px 14px; }
+  #home-section .flow .home-section-art, #home-section .browser .home-section-art { display: block; width: 34px; height: 34px; }
+  #home-section .tile-label { font-size: 21px; }
+  .home-breaks { gap: 10px; padding-top: 6px; }
+  #home-section .home-breaks .tile { padding: 8px 12px; gap: 10px; }
+  #home-section .home-breaks .tile-label { font-size: 18px; }
+  .home-breaks .home-section-art { width: 34px; height: 30px; }
+  .home-bar { gap: 10px; }
+  #home-section .home-bar .tile { flex: 1 1 0; min-width: 0; padding: 8px 14px; height: 56px; }
+  #home-section .home-bar .tile-label { font-size: 18px; }
+  .home-footnote { display: none; }
+}

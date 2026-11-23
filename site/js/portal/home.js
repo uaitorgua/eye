@@ -13,6 +13,7 @@ import { openBrowser, closeBrowser } from '../browser/browser.js';
 import { openRelax, closeRelax } from '../relax/relax.js';
 import { cue } from '../core/cue.js';
 import { iconElement } from '../ui/icons.js';
+import * as books from '../reader/book-store.js';
 
 // Озвучення плиток меню, коли на них потрапляє погляд (для незрячих / слабозорих).
 const TILE_SAY = {
@@ -37,7 +38,34 @@ export function showHome() {
   if (current && SYSTEMS[current]?.close) SYSTEMS[current].close();
   current = null;
   $('home-section').classList.remove('hidden');
+  syncFlowInert();
+  refreshContinue();
   if (location.hash && location.hash !== '#/') history.replaceState(null, '', '#/');
+}
+
+// «Продовжити: назва, стор. N» на плитці Книг — одразу видно, до чого повертаєшся.
+// Затримка: читанка зберігає місце асинхронно саме в момент виходу.
+let continueTimer;
+function refreshContinue() {
+  clearTimeout(continueTimer);
+  continueTimer = setTimeout(async () => {
+    const sub = document.querySelector('#home-section .books .tile-sub');
+    if (!sub) return;
+    try {
+      const id = localStorage.getItem('eyeflow.lastBook');
+      const meta = id && (await books.listBooks()).find(b => b.id === id);
+      const p = meta && await books.getProgress(id);
+      sub.textContent = meta ? `Продовжити: ${meta.name}${p?.page ? ', стор. ' + p.page : ''}` : 'Підручники й читання';
+      sub.classList.toggle('home-continue', !!meta);
+    } catch { /* сховище недоступне — лишаємо звичайний підпис */ }
+  }, 350);
+}
+
+// Екран алгоритмів лежить під меню. Поки меню видно, його кнопки не мають ловити Tab і читач екрана.
+// (Погляд їх і так не бачить: меню повністю їх закриває.)
+function syncFlowInert() {
+  const covered = !$('home-section').classList.contains('hidden');
+  for (const id of ['toolbar', 'main']) { const n = $(id); if (n) n.inert = covered; }
 }
 
 export function openSystem(name) {
@@ -47,6 +75,7 @@ export function openSystem(name) {
   current = name;
   // Алгоритми — це екран під меню, тому меню ховаємо; Книги й Тетріс — власні шари поверх меню.
   $('home-section').classList.toggle('hidden', name === 'flow');
+  syncFlowInert();
   sys.open();
   history.replaceState(null, '', '#/' + name);
 }

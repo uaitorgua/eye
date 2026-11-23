@@ -16,6 +16,9 @@
 }
 html, body { background: var(--paper); color: var(--ink); font-family: var(--font-ui); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 
+/* Text only for screen readers (live page numbers and the like). */
+.sr-only { position: absolute !important; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
 /* ---------- Keycap tiles ---------- */
 .tile {
   border-radius: 18px;
@@ -46,6 +49,11 @@ html, body { background: var(--paper); color: var(--ink); font-family: var(--fon
 #gaze-dot .ring { width: 60px; height: 60px; left: -30px; top: -30px;
   background: conic-gradient(var(--gold) calc(var(--p, 0) * 360deg), rgba(21, 36, 64, .12) 0);
   -webkit-mask: radial-gradient(circle, transparent 22px, #000 23px); mask: radial-gradient(circle, transparent 22px, #000 23px); }
+/* Head mode rest zone: the pointer parks, turns grey and shows that nothing will be pressed. */
+#gaze-dot.resting::before { background: rgba(120, 132, 150, .85); transition: background .2s; }
+#gaze-dot.resting .ring { visibility: hidden; }
+#gaze-dot.resting::after { content: 'Відпочинок · підніміть голову'; position: absolute; left: 20px; top: 14px; white-space: nowrap;
+  padding: 4px 10px; border-radius: 999px; background: rgba(21, 36, 64, .82); color: #fff; font: 600 .85rem/1.2 system-ui, sans-serif; }
 
 #toast { background: var(--card); color: var(--ink); border: 1px solid var(--line); border-left: 6px solid var(--blue);
   border-radius: 14px; box-shadow: 0 18px 40px -18px rgba(21, 36, 64, .5); font-weight: 600; }
@@ -170,7 +178,6 @@ html, body { background: var(--paper); color: var(--ink); font-family: var(--fon
 #tetris-section .tz-left, #tetris-section .tz-right { background: linear-gradient(180deg, var(--card), var(--paper-2)); border-color: var(--line); }
 #tetris-section :is(.tz-left, .tz-right) .tile-icon { display: grid; place-items: center; width: 1.8em; height: 1.8em; border-radius: 50%;
   background: var(--blue); color: #fff; font-size: clamp(30px, 4.4vw, 64px); box-shadow: 0 4px 0 var(--blue-deep); }
-#tetris-section .tz-right { padding-bottom: calc(min(130px, 14.4vh) + var(--gap)); }
 #tetris-section .tz-rotate { border: 0; border-radius: 18px; box-shadow: 0 0 0 6px var(--card), 0 0 0 7px var(--line), 0 26px 40px -26px rgba(21, 36, 64, .7); }
 .tetris-info span { padding: 4px 12px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); }
 .tetris-hint { font-size: 15px; color: var(--ink-2); }
@@ -242,6 +249,22 @@ body.paused [data-dwell]:not([data-dwell-always]) { opacity: .45; }
   #toolbar .spacer { grid-column: auto; }
   #toolbar .tool .tile-label { font-size: 14px; }
 }
+/* Short screens: one toolbar row and a cross-shaped scroller, so all four scroll arrows stay on screen. */
+@media (max-height: 520px) {
+  #toolbar { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; padding: 6px 8px; }
+  #toolbar .spacer { display: none; }
+  #toolbar .tool { min-height: 0; height: 56px; gap: 2px; padding: 4px 4px; border-radius: 12px; }
+  #toolbar .tool .tile-icon { font-size: 17px; }
+  #toolbar .tool .tile-label { font-size: 12.5px; }
+  #scroller { width: 140px; padding: 6px; gap: 6px; grid-template-columns: 1fr 1fr; grid-template-rows: repeat(3, minmax(0, 1fr));
+    grid-template-areas: "up up" "left right" "down down"; }
+  #scroll-up { grid-area: up; } #scroll-left { grid-area: left; } #scroll-right { grid-area: right; } #scroll-down { grid-area: down; }
+  #scroller .tile { min-height: 0; font-size: 22px; }
+  #side h3 { margin: 0; font-size: 15px; }
+}
+@media (max-height: 520px) and (max-width: 700px) {
+  #scroller { width: 100%; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: 48px; grid-template-areas: "left up down right"; }
+}
 .fc-empty-hint { position: sticky; left: 0; width: min(420px, 100%); margin: 28px auto 0; padding: 16px 20px; border-radius: 18px; text-align: center;
   background: var(--blue-wash); border: 1px dashed #9db8ee; color: var(--ink); font-size: 17px; line-height: 1.45; }
 .fc-empty-hint b { display: block; font: 700 21px/1.2 var(--font-display); margin-bottom: 4px; }
@@ -285,8 +308,11 @@ body.paused [data-dwell]:not([data-dwell-always]) { opacity: .45; }
   border-radius: 18px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--drop); }
 .cr-stat-label { font-size: clamp(12px, 1.1vw, 15px); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
 .cr-stat-value { font-size: clamp(26px, 3.2vw, 46px); font-weight: 800; letter-spacing: -.02em; line-height: 1.05; font-variant-numeric: tabular-nums; }
-.cr-stat-sub { font-size: clamp(12px, 1.1vw, 15px); color: var(--ink-2); }
+.cr-stat-sub { font-size: clamp(14px, 1.1vw, 16px); color: var(--ink-2); }
 .cr-facts { margin: 0; font-size: clamp(13px, 1.2vw, 16px); color: var(--ink-2); }
+.cr-change { margin: 0; padding: 8px 14px; border-radius: 12px; font-weight: 700; font-size: clamp(14px, 1.4vw, 18px); }
+.cr-change.better { background: #e3f5ea; color: #17643a; }
+.cr-change.worse { background: #fbeaea; color: #8f2a2a; }
 .cr-map { margin: 0; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: clamp(10px, 1.4vw, 18px); border-radius: 22px; background: var(--paper-2); border: 1px solid var(--line); }
 .cr-map-svg { flex: 1; min-height: 0; width: 100%; }
 .cr-map-screen { fill: var(--card); stroke: var(--line-strong); stroke-width: 4; }
@@ -304,6 +330,20 @@ body.paused [data-dwell]:not([data-dwell-always]) { opacity: .45; }
 #modal-layer > .calib-report .cr-actions .tile.primary { background: var(--blue); border-color: var(--blue); color: #fff; --dwell-wash: rgba(255, 255, 255, .18); --lip: rgba(0, 0, 0, .28); }
 .cr-actions .tile.primary .tile-icon { background: rgba(255, 255, 255, .18); color: #fff; }
 #modal-layer > .calib-report [data-dwell]::after { background: var(--gold); }
+.cr-actions.cr-three { grid-template-columns: 1.4fr 1fr 1fr; }
+.cr-actions .tile:disabled { opacity: .55; }
+@media (max-width: 760px) { .cr-actions.cr-three { grid-template-columns: 1.2fr 1fr 1fr; } }
+
+/* ---------- Light frame: a white border around the screen as extra light on the face ---------- */
+html.light-frame::after { content: ''; position: fixed; inset: 0; z-index: 10020; pointer-events: none;
+  border: clamp(14px, 2.2vw, 32px) solid #fff; box-shadow: inset 0 0 0 1px rgba(21, 36, 64, .12); }
+
+/* ---------- Settings: section name above each page ---------- */
+.settings-section { flex: 0 0 auto; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 0;
+  font-size: clamp(14px, 1.4vw, 18px); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--blue-deep); }
+.settings-section span { font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.settings :is(.steppers, .settings-toggles).few { grid-template-rows: 1fr; }
+@media (max-width: 700px) { .settings .steppers.few { grid-template-rows: repeat(2, 1fr); } }
 @media (max-width: 760px) {
   .cr-main { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
   .cr-map figcaption, .cr-facts, .cr-stat-sub { display: none; }
@@ -326,6 +366,58 @@ body.paused [data-dwell]:not([data-dwell-always]) { opacity: .45; }
 
 /* ---------- Eye test: same paper language as the rest of the settings ---------- */
 #modal-layer > .eye-test { gap: 10px; }
+
+/* Glint experiment panel (js/ui/glint-test.js). */
+#modal-layer > .glint-test { gap: 10px; }
+.glint-test .glint-help { margin: 0; }
+.glint-test .glint-eyes { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+.glint-test .glint-eyes figure { margin: 0; text-align: center; font-size: .85rem; color: var(--muted, #5b6478); }
+.glint-test .glint-eye { width: 160px; height: 160px; background: #111; border-radius: 12px; image-rendering: pixelated; display: block; margin: 0 auto 4px; }
+.glint-test .glint-status { margin: 0; text-align: center; font-weight: 600; }
+.glint-test .glint-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.glint-test .glint-log table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.glint-test .glint-log th, .glint-test .glint-log td { padding: 4px 6px; border-bottom: 1px solid var(--line); text-align: left; }
+.glint-test .glint-log td.pass { color: #1b7a3a; font-weight: 700; }
+.glint-measure { position: fixed; inset: 0; z-index: 10005; background: rgba(10, 16, 28, .55); display: grid; place-items: center; align-content: center; gap: 18px; color: #fff; font-weight: 600; }
+.glint-measure .glint-target { width: 18px; height: 18px; border-radius: 50%; background: #ffcc00; box-shadow: 0 0 0 6px rgba(255, 204, 0, .25); }
+.glint-measure p { margin: 0; }
+/* «Білий хрест»: чорний екран, світить лише хрест. Над світлою рамкою (10020), щоб світло давав тільки він.
+   Підписи й кнопки тьмяні й лежать у темних чвертях екрана, поза плечима хреста. */
+.glint-stage { position: fixed; inset: 0; z-index: 10030; background: #000; color: #9aa3b2; font-size: clamp(14px, 1.3vw, 17px); }
+.glint-cross { position: absolute; inset: 0; pointer-events: none; }
+.glint-cross i { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: #fff; border-radius: 4px; transition: opacity .12s linear; }
+.glint-cross .arm-h { width: 92vw; height: 13vmin; }
+.glint-cross .arm-v { width: 13vmin; height: 92vh; }
+/* Точка фіксації: маленька й темна, щоб майже не міняти форму відблиску. */
+.glint-cross-dot { position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%;
+  background: #c62f2f; box-shadow: 0 0 0 3px #000; transition: opacity .12s linear; }
+.glint-stage.dark .glint-cross i { opacity: 0; }
+.glint-stage-hud { position: absolute; left: clamp(10px, 2vw, 28px); bottom: clamp(10px, 2vh, 24px); max-width: min(40vw, 460px); display: grid; gap: 6px; }
+.glint-stage-eyes { display: flex; gap: 8px; }
+.glint-stage-eyes canvas { width: clamp(72px, 9vw, 112px); height: auto; aspect-ratio: 1; border-radius: 10px; background: #0b0b0b; outline: 1px solid #262626; image-rendering: pixelated; }
+.glint-stage-status, .glint-stage-count { margin: 0; line-height: 1.35; font-variant-numeric: tabular-nums; }
+.glint-stage-count { color: #e2b23a; font-weight: 700; }
+.glint-stage-count:empty { display: none; }
+.glint-stage-bar { position: absolute; right: clamp(10px, 2vw, 28px); bottom: clamp(10px, 2vh, 24px); max-width: min(40vw, 460px); display: grid; gap: 10px; justify-items: stretch; }
+.glint-stage-btn { min-height: 64px; padding: 10px 18px; border-radius: 14px; border: 2px solid #3a3f48; background: #121418; color: #c5ccd8;
+  font: 600 clamp(15px, 1.4vw, 19px) var(--font-ui); cursor: pointer; position: relative; overflow: hidden; }
+.glint-stage-btn:hover:not(:disabled), .glint-stage-btn.dwell-focus { border-color: #7d8899; outline: none; }
+.glint-stage-btn:focus-visible { outline: 3px solid #e2b23a; outline-offset: 2px; }
+.glint-stage-btn:disabled { opacity: .45; cursor: default; }
+.glint-stage-btn[data-dwell]::after { background: #e2b23a; }
+.glint-stage-warn { margin: 0; color: #c9a14a; line-height: 1.35; }
+.glint-stage-warn:empty { display: none; }
+@media (max-width: 640px) {
+  .glint-stage-hud, .glint-stage-bar { max-width: 46vw; }
+  .glint-stage-btn { min-height: 56px; padding: 8px 10px; }
+}
+/* Низький екран (телефон лежачи): кнопки в рядок у правому верхньому куті, стан — у лівому нижньому. */
+@media (max-height: 520px) {
+  .glint-stage-bar { top: 10px; bottom: auto; grid-auto-flow: column; max-width: 46vw; gap: 6px; }
+  .glint-stage-warn { display: none; }
+  .glint-stage-btn { min-height: 52px; padding: 6px 8px; font-size: 14px; }
+  .glint-stage-eyes canvas { width: 64px; }
+}
 .eye-state { font: 700 clamp(26px, 3.4vw, 44px)/1.15 var(--font-display); letter-spacing: -.02em; }
 .eye-bar { height: clamp(44px, 8vh, 70px); border-radius: 999px; background: var(--paper-2); border: 2px solid var(--line-strong); box-shadow: inset 0 2px 6px rgba(21, 36, 64, .12); }
 .eye-fill { background: linear-gradient(90deg, #2f9a65, #57c08a); border-radius: 999px; }
@@ -335,3 +427,34 @@ body.paused [data-dwell]:not([data-dwell-always]) { opacity: .45; }
 .eye-stats b { color: var(--blue); font-variant-numeric: tabular-nums; }
 #modal-layer > .eye-test .eye-target { background: var(--blue-wash); border: 2px dashed #9db8ee; color: var(--ink); }
 #modal-layer > .eye-test .eye-close { background: var(--ink); color: #fff; border-color: var(--ink); --dwell-wash: rgba(255, 255, 255, .16); }
+
+/* ---------- Keyboard focus vs gaze focus ----------
+   Gaze focus (.dwell-focus) is a solid ring; keyboard focus is dashed, so a ring left behind after a dialog
+   closes never looks like "the gaze has selected this". */
+:is(.tile, .tz-rotate, .rd-scroll-band, .glint-stage-btn):focus-visible:not(.dwell-focus) { outline-style: dashed !important; }
+
+/* ---------- Pause breathes ----------
+   A slow gold pulse on the frame: the app is resting, not frozen. Off for reduced motion. */
+@keyframes pause-breathe { 50% { box-shadow: inset 0 0 0 10px var(--gold), inset 0 0 36px 6px rgba(239, 178, 29, .28); } }
+body.paused::before { animation: pause-breathe 2.8s ease-in-out infinite; }
+
+/* ---------- Reader: page-turn pill ---------- */
+.rd-page-pill { position: absolute; left: 50%; top: 50%; z-index: 3; transform: translate(-50%, -50%); pointer-events: none; opacity: 0;
+  padding: 12px 26px; border-radius: 999px; background: rgba(21, 36, 64, .88); color: #fff; font: 700 clamp(18px, 2.2vw, 28px)/1.1 var(--font-ui);
+  box-shadow: 0 18px 36px -18px rgba(0, 0, 0, .6); white-space: nowrap; }
+.rd-page-pill.show { animation: page-pill 1.3s cubic-bezier(.2, .7, .3, 1) both; }
+@keyframes page-pill {
+  0% { opacity: 0; transform: translate(-50%, -40%) scale(.96); }
+  14%, 70% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -54%); }
+}
+
+/* ---------- Home: "continue reading" line on the Books tile ---------- */
+#home-section .books .tile-sub.home-continue { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+  font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  body.paused::before { animation: none; }
+  .rd-page-pill.show { animation: page-pill-still 1.3s steps(1, end) both; }
+  @keyframes page-pill-still { 0%, 99% { opacity: 1; } 100% { opacity: 0; } }
+}

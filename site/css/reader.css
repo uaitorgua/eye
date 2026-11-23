@@ -10,7 +10,9 @@
   grid-template-rows: clamp(48px, 9dvh, 86px) minmax(0, 1fr) clamp(48px, 9dvh, 86px); }
 .rd-reading { position: relative; grid-column: 1; grid-row: 2; min-width: 0; min-height: 0;
   display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
-#reader-view { grid-area: 2 / 1; overflow: auto; background: #dce3ed; transition: background-color .25s ease; }
+/* position: relative — сторінки міряють offsetTop від стрічки, а не від заголовка над нею (інакше «Далі» і
+   відновлення місця зсувались на висоту заголовка). */
+#reader-view { position: relative; grid-area: 2 / 1; overflow: auto; background: #dce3ed; transition: background-color .25s ease; }
 #reader-view:focus-visible { outline: 2px solid #1856d8; outline-offset: -2px; }
 #reader-pages { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 16px 24px; min-width: min-content; }
 .pdf-page { position: relative; flex-shrink: 0; background: #fff; box-shadow: 0 2px 12px rgba(21,36,64,.2); }
@@ -19,7 +21,7 @@
 /* Gaze-scroll strips. Idle: quiet paper with a pill label. While the gaze rests on one, cobalt pours in
    from the screen edge, a gold meter counts down the onset delay and the glow spills onto the text
    (.rd-hint below), so the direction of travel is obvious before anything moves. */
-.rd-scroll-band { position: relative; isolation: isolate; overflow: hidden; grid-column: 1 / -1; min-width: 0; display: grid; place-items: center;
+.rd-scroll-band { position: relative; isolation: isolate; overflow: hidden; grid-column: 1; min-width: 0; display: grid; place-items: center;
   padding: 0; border: 0; color: var(--ink, #152440); background: var(--paper-2, #efeadf);
   font: 700 clamp(15px, 1.7vw, 20px)/1 var(--font-ui, system-ui, sans-serif); cursor: pointer; touch-action: manipulation; }
 .rd-scroll-up { grid-row: 1; box-shadow: inset 0 -1px 0 var(--line, #e3ddd0); }
@@ -42,9 +44,10 @@
 .rd-scroll-down.scrolling .ui-icon { animation: rd-nudge-down .9s ease-in-out infinite; }
 @keyframes rd-nudge-up { 50% { transform: translateY(-4px); } }
 @keyframes rd-nudge-down { 50% { transform: translateY(4px); } }
-/* Nothing left to scroll in this direction: the strip says so instead of looking broken. */
+/* Nothing left to scroll in this direction: the strip says so instead of looking broken.
+   Colour, not opacity: faded text dropped below 4.5:1. */
 .rd-scroll-band.at-end { cursor: default; }
-.rd-scroll-band.at-end .rd-band-pill { opacity: .55; box-shadow: none; padding-left: 1.1em; }
+.rd-scroll-band.at-end .rd-band-pill { background: transparent; border-style: dashed; color: var(--ink-2, #46536c); box-shadow: none; padding-left: 1.1em; }
 .rd-scroll-band.at-end .ui-icon { display: none; }
 
 .rd-hint { grid-area: 2 / 1; pointer-events: none; opacity: 0; transition: opacity .18s ease; z-index: 2; }
@@ -53,7 +56,9 @@
 #rd-hint-left { justify-self: start; width: 12%; background: linear-gradient(90deg, rgba(24,86,216,.45), transparent); }
 #rd-hint-right { justify-self: end; width: 12%; background: linear-gradient(270deg, rgba(24,86,216,.45), transparent); }
 
-.rd-rail { grid-column: 2; grid-row: 2; display: grid; grid-auto-rows: minmax(0, 1fr);
+/* The rail spans the full height; the scroll strips stay above and below the text only, so a gaze that
+   overshoots «Пауза» or «Ще» never scrolls the book. */
+.rd-rail { grid-column: 2; grid-row: 1 / -1; display: grid; grid-auto-rows: minmax(0, 1fr);
   gap: 8px; min-height: 0; padding: 8px; border-left: 1px solid var(--line, #dedbd2);
   background: linear-gradient(180deg, var(--card, #fffdf8), var(--paper-2, #efeadf)); }
 .rd-rail .tile { min-width: 0; min-height: 0; padding: 4px; gap: 4px; background: #fffdf8; border: 2px solid var(--line, #ddd8cd); border-radius: 16px; color: #152440; font-size: clamp(12px, 1.5vw, 17px); }
@@ -77,6 +82,16 @@
 #reader-section[data-theme="dark"] #reader-view { background: #0e131c; }
 #reader-section[data-theme="dark"] .pdf-page { background: #000; box-shadow: 0 0 0 1px rgba(255,255,255,.08); }
 #reader-section[data-theme="dark"] .pdf-page canvas { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.94); }
+/* Dark means the whole reader, not a black page in a cream frame: strips, title bar and rail dim too. */
+#reader-section[data-theme="dark"] { --paper: #0e131c; --paper-2: #151b26; --card: #1b2230; --line: #2a3344; --line-strong: #3a4558;
+  --ink: #d9e0ec; --ink-2: #a9b4c6; --lip: rgba(0, 0, 0, .5); background: #0e131c; color: #d9e0ec; }
+#reader-section[data-theme="dark"] :is(.rd-top, #rd-page) { color: #d9e0ec; }
+#reader-section[data-theme="dark"] .rd-rail .tile:not(#rd-pause) { background: #1b2230; color: #d9e0ec; border-color: #2a3344; }
+#reader-section[data-theme="dark"] .rd-rail .tile-icon { color: #8fb0ff; }
+#reader-section[data-theme="dark"] .rd-rail #rd-pause { background: #2a3550; border-color: #3a4a6e; }
+#reader-section[data-theme="dark"] .rd-rail .tile.active { background: #22345e; border-color: #5b8cf0; }
+#reader-section[data-theme="dark"] .rd-band-pill .ui-icon { color: #8fb0ff; }
+#reader-section[data-theme="sepia"] { --paper-2: #ece2cc; --card: #faf3e3; }
 
 /* The library always presents a finite page of large targets with gaze-accessible navigation. */
 #modal-layer > .modal.library { padding: clamp(12px, 2vw, 28px); background: #f7f4ec; color: #152440; }
@@ -89,7 +104,13 @@
 .library [data-dwell]::after { background: #1856d8; }
 .library .tile:disabled { opacity: .45; cursor: default; }
 .library .tile.book { text-align: left; align-items: flex-start; justify-content: center; padding: clamp(12px, 2vw, 24px); }
-.library .tile.book .tile-label { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; font-size: clamp(18px, 2.3vw, 30px); line-height: 1.16; }
+.library .tile.book .tile-label { flex-shrink: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: break-word; hyphens: auto; font-size: clamp(18px, 2.3vw, 30px); line-height: 1.16; }
+/* How far the book has been read: a gold line along the top edge (the bottom one is the dwell meter). */
+.library .tile.book { position: relative; }
+.library .tile.book::before { content: ''; position: absolute; left: 0; top: 0; height: 5px; width: calc(var(--book-progress, 0) * 100%);
+  background: var(--gold, #efb21d); border-radius: 12px 3px 3px 0; z-index: 1; }
+.library .tile.book.broken { border-style: dashed; border-color: #c9504c; }
+.library .tile.book.broken .tile-sub { color: #9b2f2c; font-weight: 600; }
 .library .tile-sub { margin-top: 8px; color: #535f73; font-size: clamp(14px, 1.4vw, 18px); }
 .library-empty { flex: 1; display: flex; align-items: center; max-width: 640px; margin: 0 auto; font-size: clamp(18px, 2vw, 26px); color: #46536c; text-align: center; }
 .library-instruction { margin: 0; font-size: 18px; color: #923b29; }
@@ -98,7 +119,7 @@
 .library-page { min-width: 64px; font-size: 18px; font-weight: 700; text-align: center; }
 .library-tools { display: flex; gap: 12px; flex-shrink: 0; min-height: clamp(72px, 12vh, 100px); }
 .library-tools .tile { flex: 1; font-size: clamp(15px, 1.5vw, 20px); }
-.library-tools .tile-sub { margin: 3px 0 0; font-size: 13px; }
+.library-tools .tile-sub { margin: 3px 0 0; font-size: 15px; }
 .library-tools .library-exit { background: #152440; color: #fff; border-color: #152440; }
 .library-tools .library-exit::after { background: #efb21d; }
 @media (max-width: 600px) {
@@ -110,7 +131,14 @@
   .library-pages { height: 58px; gap: 8px; }
   .library-tools { min-height: 76px; gap: 8px; }
   .library-tools .tile { padding: 6px; }
-  .library .tile-sub { margin-top: 4px; font-size: 13px; }
+  .library .tile-sub { margin-top: 4px; font-size: 14px; }
+}
+/* Landscape phone: titles keep their space; the second line under each tile goes. */
+@media (max-height: 500px) {
+  .library .tile-sub { display: none; }
+  .library .tile.book .tile-label { -webkit-line-clamp: 2; font-size: 18px; }
+  .library .modal-title { font-size: 22px; margin: 0 0 6px; }
+  .library .modal-head-icon { display: none; }
 }
 @media (max-height: 500px) {
   .rd-top { min-height: 34px; padding-block: 3px; }
@@ -119,6 +147,10 @@
   .rd-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .rd-rail .tile-icon { display: none; }
 }
+/* Pause tag and toasts must not sit on the «Вгору» strip while reading: move them to the bottom of the text. */
+body.paused:has(#reader-section:not(.hidden))::after { top: auto; bottom: calc(clamp(48px, 9dvh, 86px) + 10px);
+  left: calc((100vw - clamp(96px, 13vw, 176px)) / 2); border-radius: 16px; }
+body:has(#reader-section:not(.hidden)) #toast { top: auto; bottom: calc(clamp(48px, 9dvh, 86px) + 56px); }
 @media (prefers-reduced-motion: reduce) {
   .rd-hint, .rd-top::after, .rd-scroll-band::before, .rd-band-pill, #reader-view { transition: none; }
   .rd-scroll-band.scrolling .ui-icon { animation: none; }

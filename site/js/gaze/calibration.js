@@ -70,7 +70,7 @@ export function geometry(pos, geo = GEO) {
 const CSS = `
 .gz-cal{position:fixed;inset:0;z-index:5000;background:#0b1526;color:#eaf2ff;
   font:16px/1.5 system-ui,sans-serif;display:flex;align-items:center;justify-content:center}
-.gz-cal.gz-clear{background:rgba(11,21,38,.97)}
+.gz-cal.gz-clear{background:#0b1526}
 .gz-msg{max-width:720px;text-align:center;padding:24px;position:relative;z-index:10010}
 .gz-msg h2{font-size:1.6rem;margin:0 0 10px}
 .gz-msg p{color:#aebfd8;margin:6px 0}
@@ -98,7 +98,7 @@ body:has(.gz-cal) #gaze-dot{visibility:hidden}
 .gz-pips i{width:9px;height:9px;border-radius:50%;background:#33486e;transition:background .2s,transform .2s}
 .gz-pips i.done{background:#20c997}
 .gz-pips i.now{background:#ffd43b;transform:scale(1.35)}
-.gz-pips i.miss{background:#ff8f8f}
+.gz-pips i.miss{background:transparent;box-shadow:inset 0 0 0 2px #ff8f8f}
 .gz-pips i.gz-gap{margin-left:7px}
 .gz-tip{color:#8fa6c8;font-weight:500;overflow:hidden;text-overflow:ellipsis}
 .gz-msg .gz-note{display:inline-flex;align-items:center;gap:10px;margin-top:18px;padding:9px 16px;border-radius:999px;
@@ -294,6 +294,165 @@ async function measurePoint(dot, x, y, readFace, cancelled, onGaze) {
   return { x, y, valid: pts.length / expected, accuracyPx, precisionPx, n: pts.length, expected };
 }
 
+// ── 3б. Раунд перевірки: спершу міряємо, потім учимо ───────────────────────
+// У кожній синій точці спершу міряємо похибку (модель цієї точки ще не бачила — оцінка чесна),
+// а ПОТІМ, поки людина ще дивиться сюди, додаємо точку до моделі. Тож перевірка теж калібрує.
+// Набори точок не повторюються між раундами: «Уточнити» щоразу міряє на нових місцях.
+export const VAL_SETS = [
+  [[0.78, 0.73], [0.22, 0.73], [0.48, 0.6], [0.22, 0.3], [0.78, 0.3]],
+  [[0.5, 0.2], [0.12, 0.5], [0.35, 0.42], [0.88, 0.5], [0.5, 0.85]],
+  [[0.3, 0.15], [0.7, 0.15], [0.62, 0.45], [0.3, 0.88], [0.7, 0.88]],
+];
+const NO_POINTS = { ok: false, error: 'Не вдалося виміряти точність: камера не бачила очей на синіх точках. Додайте світла на обличчя і спробуйте ще раз.' };
+
+async function validationRound({ ov, dot, bar, stage, pip, pipFrom = 0, moveTo, readFace, stopped, status, W, H, vpFrac, label = 'Перевірка' }) {
+  dot.classList.add('gz-val');
+  // Показуємо, куди модель «бачить» погляд: і людині, і помічнику одразу видно, чи калібрування вдалося.
+  const gaze = document.createElement('div');
+  gaze.className = 'gz-gaze';
+  gaze.setAttribute('aria-hidden', 'true');
+  gaze.hidden = true;
+  ov.appendChild(gaze);
+  let mx = null, my = null;
+  const onGaze = (px, py) => {
+    mx = mx == null ? px : mx * 0.7 + px * 0.3;
+    my = my == null ? py : my * 0.7 + py * 0.3;
+    gaze.hidden = false;
+    gaze.style.transform = 'translate(' + Math.max(0, Math.min(W, mx)).toFixed(1) + 'px,' + Math.max(0, Math.min(H, my)).toFixed(1) + 'px)';
+  };
+  const points = [];
+  let feedback = '', trained = 0;
+  for (let i = 0; i < vpFrac.length; i++) {
+    status(label + ' ' + (i + 1) + '/' + vpFrac.length);
+    stage.textContent = label + ' ' + (i + 1) + ' / ' + vpFrac.length;
+    bar.innerHTML = 'Дивись на синій кружечок. <b>Жовте кільце</b> показує, куди, за оцінкою камери, ти дивишся' + feedback;
+    pip(pipFrom + i, 'now');
+    const target = [vpFrac[i][0] * W, vpFrac[i][1] * H];
+    if (!await moveTo(target)) return { interrupted: true };
+    const point = await measurePoint(dot, ...target, readFace, stopped, onGaze);
+    if (stopped()) return { interrupted: true };
+    bar.innerHTML = 'Тримай погляд на кружечку — <b>запам’ятовую цю точку</b>';
+    gaze.hidden = true; mx = my = null;
+    const learned = await collectPoint(dot, ...target, null, readFace, stopped);
+    if (stopped()) return { interrupted: true };
+    if (learned.samples) trained++;
+    // Одна невдала точка (кліпання, відвів погляд) не скасовує все калібрування.
+    if (point) points.push(point);
+    pip(pipFrom + i, point ? 'done' : 'miss');
+    feedback = point ? ' · попередня точка: промах ≈ ' + Math.round(point.accuracyPx) + ' px' : ' · попередню точку не вдалося виміряти';
+  }
+  gaze.remove();
+  return { points, trained };
+}
+
+function buildReport(points, geo, extra = {}) {
+  const geoNow = geometry(positions(), geo);
+  const pxPerDeg = geoNow ? geoNow.pxPerDeg : null;
+  const usable = points.filter(p => p.accuracyPx != null);
+  const mean = (a) => a.reduce((x, y) => x + y, 0) / (a.length || 1);
+  const accuracyPx = usable.length ? mean(usable.map(p => p.accuracyPx)) : null;
+  const worstPx = usable.length ? Math.max.apply(null, usable.map(p => p.accuracyPx)) : null;
+  const precisionPx = usable.length ? mean(usable.map(p => p.precisionPx)) : null;
+  const validPct = Math.round(100 * mean(points.map(p => p.valid)));
+  const toDeg = (px) => (px != null && pxPerDeg) ? px / pxPerDeg : null;
+  const report = {
+    ok: accuracyPx != null,
+    accuracyPx, worstPx, precisionPx, validPct,
+    accuracyDeg: toDeg(accuracyPx), worstDeg: toDeg(worstPx), precisionDeg: toDeg(precisionPx),
+    pxPerDeg, distanceCm: geoNow ? Math.round(geoNow.distanceMm / 10) : null,
+    points, ts: Date.now(),
+    // Точність виміряна ДО навчання на синіх точках, тож модель після раунду трохи краща за цифру.
+    ...extra,
+  };
+  report.grade = report.accuracyDeg != null
+    ? gradeOf(report.accuracyDeg)
+    : (accuracyPx != null ? gradeOf(accuracyPx / 40) : GRADES[2]);
+  return report;
+}
+
+// Спільна «оснастка» оверлею: Esc, кнопка скасування, стоп очима, гейт обличчя, читання точок.
+function session(o) {
+  const ov = overlay();
+  let cancel = false, byEyes = false, lastFace = null, lastFrameAt = -Infinity;
+  const readFace = () => {
+    const face = positions();
+    const now = performance.now();
+    if (face !== lastFace) { lastFace = face; lastFrameAt = now; }
+    return face?.length >= 468 && now - lastFrameAt < 500 && !eyes.closed && !document.hidden ? face : null;
+  };
+  const onKey = (e) => { if (e.key === 'Escape') { cancel = true; e.preventDefault(); } };
+  document.addEventListener('keydown', onKey, true);
+  const stopCancel = cancelButton(ov, () => { cancel = true; });
+  const eyesStop = o.eyesStop !== false;
+  stopNote = eyesStop ? STOP_NOTE : '';
+  const stopEyes = eyesStop
+    ? watchEyesStop(ov, () => { byEyes = true; cancel = true; }, { ms: o.eyesStopMs, sound: o.sound !== false })
+    : () => {};
+  return {
+    ov, readFace, eyesStop,
+    cancelled: () => cancel,
+    get byEyes() { return byEyes; },
+    close() {
+      document.removeEventListener('keydown', onKey, true);
+      stopCancel(); stopEyes();
+      document.body.classList.remove('calibrating');
+      ov.remove();
+      try { wg().showVideoPreview(true); } catch { /* ok */ }
+    },
+  };
+}
+
+// «Уточнити»: ще один раунд синіх точок поверх ПОТОЧНОЇ моделі, на нових місцях.
+// Міряє, наскільки модель влучає тепер (після навчання на попередніх синіх точках), і знову вчиться.
+// Скасування не відкочує вже додані зразки: людина справді дивилась на ці точки, вони корисні.
+export async function refineCalibration(opts = {}) {
+  const g = wg();
+  if (!g) return { ok: false, error: 'WebGazer не завантажено' };
+  const round = Math.max(2, opts.round || 2);
+  const s = session(opts);
+  const status = (t) => opts.onStatus?.(t);
+  const CANCELLED = { ok: false, cancelled: true, get reason() { return s.byEyes ? 'eyes' : 'manual'; }, error: 'Уточнення скасовано' };
+  try {
+    const faceOk = await faceGate(s.ov, { cancelled: s.cancelled, readFace: s.readFace, needMs: 800 });
+    if (s.cancelled()) return CANCELLED;
+    if (!faceOk) return { ok: false, error: 'Не бачу обличчя в кадрі. Перевірте камеру та освітлення.' };
+    try { g.showVideoPreview(false); } catch { /* ok */ }
+    const W = innerWidth, H = innerHeight;
+    const vpFrac = VAL_SETS[(round - 1) % VAL_SETS.length];
+    const ov = s.ov;
+    ov.classList.add('gz-clear');
+    ov.innerHTML = '<div class="gz-top"><span class="gz-stage"></span><span class="gz-pips">' + '<i></i>'.repeat(vpFrac.length)
+      + '</span>' + (s.eyesStop ? '<span class="gz-tip">Стоп: заплющ очі на ' + STOP_SEC + ' с</span>' : '') + '</div><div class="gz-bar"></div>';
+    const bar = ov.querySelector('.gz-bar'), stage = ov.querySelector('.gz-stage');
+    const pips = [...ov.querySelectorAll('.gz-pips i')];
+    const pip = (i, cls) => { pips[i].className = cls; };
+    const dot = document.createElement('div');
+    dot.className = 'gz-dot';
+    dot.setAttribute('aria-hidden', 'true');
+    ov.appendChild(dot);
+    const resized = () => innerWidth !== W || innerHeight !== H;
+    const stopped = () => s.cancelled() || resized();
+    let current = null;
+    const moveTo = async (target) => {
+      if (!await moveDot(dot, current, target, s.readFace, stopped)) return false;
+      current = target;
+      return !stopped();
+    };
+    const r = await validationRound({ ov, dot, bar, stage, pip, moveTo, readFace: s.readFace, stopped, status, W, H, vpFrac, label: 'Уточнення' });
+    if (r.interrupted) return s.cancelled() ? CANCELLED : { ok: false, error: 'Камера втратила погляд. Спробуйте ще раз.' };
+    if (!r.points.length) return NO_POINTS;
+    const report = buildReport(r.points, opts.geo || GEO, {
+      round, trainedOnValidation: (opts.previous?.trainedOnValidation || 0) + r.trained,
+      retried: opts.previous?.retried || 0, previousAccuracyPx: opts.previous?.accuracyPx ?? null,
+      previousAccuracyDeg: opts.previous?.accuracyDeg ?? null,
+    });
+    setLastReport(report);
+    return report;
+  } finally {
+    s.close();
+  }
+}
+
 // ── 4. Повний цикл ──────────────────────────────────────────────────────────
 // Звіт: { ok, accuracyDeg, worstDeg, precisionDeg, accuracyPx, validPct,
 //         pxPerDeg, distanceCm, grade, points, ts }
@@ -407,63 +566,13 @@ export async function runCalibration(opts) {
     if (stats.some(s => s.samples < SAMPLES * 0.5)) return NO_SIGNAL;
 
     // Валідація на ОКРЕМИХ точках (їх не було серед калібрувальних).
-    const vpFrac = [[0.78, 0.73], [0.22, 0.73], [0.48, 0.6], [0.22, 0.3], [0.78, 0.3]];
-    dot.classList.add('gz-val');
-    // Під час перевірки показуємо, куди модель «бачить» погляд: і людині, і помічнику
-    // одразу видно, чи калібрування вдалося, а не лише число наприкінці.
-    const gaze = document.createElement('div');
-    gaze.className = 'gz-gaze';
-    gaze.setAttribute('aria-hidden', 'true');
-    gaze.hidden = true;
-    ov.appendChild(gaze);
-    let mx = null, my = null;
-    const onGaze = (px, py) => {
-      mx = mx == null ? px : mx * 0.7 + px * 0.3;
-      my = my == null ? py : my * 0.7 + py * 0.3;
-      gaze.hidden = false;
-      gaze.style.transform = 'translate(' + Math.max(0, Math.min(W, mx)).toFixed(1) + 'px,' + Math.max(0, Math.min(H, my)).toFixed(1) + 'px)';
-    };
-    const points = [];
-    let feedback = '';
-    for (let i = 0; i < vpFrac.length; i++) {
-      status('Перевірка ' + (i + 1) + '/' + vpFrac.length);
-      stage.textContent = 'Перевірка ' + (i + 1) + ' / ' + vpFrac.length;
-      bar.innerHTML = 'Дивись на синій кружечок. <b>Жовте кільце</b> показує, куди, за оцінкою камери, ти дивишся' + feedback;
-      pip(calPoints.length + i, 'now');
-      const target = [vpFrac[i][0] * W, vpFrac[i][1] * H];
-      if (!await moveTo(target)) return interrupted();
-      const point = await measurePoint(dot, ...target, readFace, stopped, onGaze);
-      if (stopped()) return interrupted();
-      // Одна невдала точка (кліпання, відвів погляд) не скасовує все калібрування.
-      if (point) points.push(point);
-      pip(calPoints.length + i, point ? 'done' : 'miss');
-      feedback = point ? ' · попередня точка: промах ≈ ' + Math.round(point.accuracyPx) + ' px' : ' · попередню точку не вдалося виміряти';
-    }
-    if (!points.length) {
-      return { ok: false, error: 'Не вдалося виміряти точність: камера не бачила очей на синіх точках. Додайте світла на обличчя і спробуйте ще раз.' };
-    }
-
-    const geoNow = geometry(positions(), geo);
-    const pxPerDeg = geoNow ? geoNow.pxPerDeg : null;
-    const usable = points.filter(p => p.accuracyPx != null);
-    const mean = (a) => a.reduce((x, y) => x + y, 0) / (a.length || 1);
-    const accuracyPx = usable.length ? mean(usable.map(p => p.accuracyPx)) : null;
-    const worstPx = usable.length ? Math.max.apply(null, usable.map(p => p.accuracyPx)) : null;
-    const precisionPx = usable.length ? mean(usable.map(p => p.precisionPx)) : null;
-    const validPct = Math.round(100 * mean(points.map(p => p.valid)));
-    const toDeg = (px) => (px != null && pxPerDeg) ? px / pxPerDeg : null;
-
-    const report = {
-      ok: accuracyPx != null,
-      accuracyPx, worstPx, precisionPx, validPct,
-      accuracyDeg: toDeg(accuracyPx), worstDeg: toDeg(worstPx), precisionDeg: toDeg(precisionPx),
-      pxPerDeg, distanceCm: geoNow ? Math.round(geoNow.distanceMm / 10) : null,
-      thinPoints: thin, retried: suspects.length, points, ts: Date.now(),
-    };
-    report.grade = report.accuracyDeg != null
-      ? gradeOf(report.accuracyDeg)
-      : (accuracyPx != null ? gradeOf(accuracyPx / 40) : GRADES[2]);
-    try { localStorage.setItem('eyeflow.calibration', JSON.stringify(report)); } catch { /* нема сховища */ }
+    const round = await validationRound({ ov, dot, bar, stage, pip, pipFrom: calPoints.length, moveTo, readFace, stopped, status, W, H, vpFrac: VAL_SETS[0] });
+    if (round.interrupted) return interrupted();
+    if (!round.points.length) return NO_POINTS;
+    const report = buildReport(round.points, geo, {
+      thinPoints: thin, retried: suspects.length, trainedOnValidation: round.trained, round: 1,
+    });
+    setLastReport(report);
     accepted = report.ok;
     return report;
   } finally {
@@ -477,6 +586,9 @@ export async function runCalibration(opts) {
   }
 }
 
+export const setLastReport = (report) => {
+  try { localStorage.setItem('eyeflow.calibration', JSON.stringify(report)); } catch { /* нема сховища */ }
+};
 export const lastReport = () => {
   try { return JSON.parse(localStorage.getItem('eyeflow.calibration') || 'null'); } catch { return null; }
 };
